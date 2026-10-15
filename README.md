@@ -14,7 +14,7 @@ Jeder Stromkreis besteht aus:
 
 | Knoten | Pflicht | Inhalt |
 |---|---|---|
-| **Netz** | ja | Leistungssensor (positiv = Bezug, negativ = Einspeisung), Name, Icon, Farbe, Zählerstand (kWh), optional Vorzeichen umkehren |
+| **Netz** | ja | Leistungssensor (positiv = Bezug, negativ = Einspeisung), Name, Icon, Farbe, Zählerstand (kWh), optional Vorzeichen umkehren. Anzeige wie bei der Power Flow Card Plus: ↑ Einspeisung (violett) und ↓ Bezug (Netzfarbe) immer beide sichtbar; `display_state`: `two_way` (Standard), `one_way` (nur Bezug), `one_way_reverse` (nur Einspeisung) |
 | **PV-Anlage** | nein | Leistungssensor, Name, Icon, Farbe. Mit PV entsteht das Dreieck PV – Netz – Haus, inklusive Einspeise-Leitung |
 | **Haus / Verbraucher** | ja | Leistungssensor (leer = wird aus PV + Netz berechnet), Name, Icon, Farbe |
 | **Gerät** | nein | z. B. Auto/Wallbox: Leistungssensor, Name, Icon, Farbe, Ladestand (%) |

@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.9.0
+/* EnergyFlow Custom Card — v0.9.1
  * Modular energy flow card: any number of electrically separate circuits
  * (each with its own grid meter, optional PV, a "home" node and an optional device),
  * plus freely configurable detail panels. Visual editor included.
@@ -11,7 +11,7 @@
  * (e.g. "layout", "preview", "hass"), they would be shadowed.
  */
 
-const EF_VERSION = "0.9.0";
+const EF_VERSION = "0.9.1";
 const EF_TYPE = "custom:energyflow-custom-card";
 const EF_EXPORT_COLOR = "#a66add";
 const EF_PALETTE = {orange:"#e9a219",yellow:"#f0ba27",blue:"#329af0",violet:"#b184e5",green:"#24a85a",teal:"#23a9aa",red:"#e0556b",grey:"#8b92a5"};
@@ -155,7 +155,7 @@ class EnergyFlowCustomCard extends HTMLElement {
       i, name: c.name || ("Stromkreis " + (i + 1)), hasSolar, hasDev, hasBat, batW, gridW, solarW, homeW, devW, pvUse, own, autarky,
       devSoc: d.soc ? this.val(d.soc) : null,
       batSoc: bt.soc ? this.val(bt.soc) : null,
-      grid: {entity: g.entity, name: g.name || "Netz", icon: g.icon || "mdi:transmission-tower", color: efColor(g.color, "blue"), meter: g.meter_reading},
+      grid: {entity: g.entity, display_state: g.display_state || "two_way", name: g.name || "Netz", icon: g.icon || "mdi:transmission-tower", color: efColor(g.color, "blue"), meter: g.meter_reading},
       solar: {entity: s.entity, name: s.name || "PV-Produktion", icon: s.icon || "mdi:solar-power", color: efColor(s.color, "orange")},
       home: {entity: hm.entity, name: hm.name || "Haus", icon: hm.icon || "mdi:home", color: efColor(hm.color, "orange")},
       device: {entity: d.entity, name: d.name || "Gerät", icon: d.icon || "mdi:car", color: efColor(d.color, "green")},
@@ -206,6 +206,14 @@ class EnergyFlowCustomCard extends HTMLElement {
     const wires = [], nodes = [], R = L.R, MIN = 5, f = n => Math.round(n * 10) / 10;
     const line = (x1, y1, x2, y2) => ({d: "M" + f(x1) + " " + f(y1) + " L" + f(x2) + " " + f(y2), len: Math.hypot(x2 - x1, y2 - y1)});
     const fmtAbs = v => this.fmt(v === null ? null : Math.abs(v));
+    /* like Power Flow Card Plus "two_way": both directions are always shown, each in its own colour */
+    const gridLines = c => {
+      const mode = c.grid.display_state, w = c.gridW;
+      const out = [], imp = {text: "↓ " + this.fmt(w === null ? null : Math.max(0, w)), color: c.grid.color}, exp = {text: "↑ " + this.fmt(w === null ? null : Math.max(0, -w)), color: EF_EXPORT_COLOR};
+      if (mode === "one_way") return [imp];
+      if (mode === "one_way_reverse") return [exp];
+      return [exp, imp];
+    };
     cs.forEach((c, i) => {
       const b = L.blocks[i], {xL, xC, xR, yTop, yMid} = b;
       if (c.hasSolar) {
@@ -217,7 +225,7 @@ class EnergyFlowCustomCard extends HTMLElement {
         this._battery(c, b, wires, nodes, line, MIN);
         const exporting = c.gridW !== null && c.gridW < 0;
         nodes.push({x: xC, y: yTop, pos: "above", name: c.solar.name, value: this.fmt(c.solarW), icon: c.solar.icon, color: c.solar.color, entity: c.solar.entity});
-        nodes.push({x: xL, y: yMid, pos: "below", name: c.grid.name, value: c.gridW === null ? "–" : (exporting ? "← " : "→ ") + fmtAbs(c.gridW), icon: c.grid.icon, color: exporting ? EF_EXPORT_COLOR : c.grid.color, entity: c.grid.entity});
+        nodes.push({x: xL, y: yMid, pos: "below", name: c.grid.name, lines: gridLines(c), icon: c.grid.icon, color: exporting ? EF_EXPORT_COLOR : c.grid.color, entity: c.grid.entity});
         nodes.push({x: xR, y: yMid, pos: "below", name: c.home.name, value: this.fmt(c.homeW), icon: c.home.icon, color: c.home.color, entity: c.home.entity});
         if (c.hasDev) nodes.push({x: xR, y: yTop, pos: "above", name: c.device.name, value: this.fmt(c.devW), icon: c.device.icon, color: c.device.color, entity: c.device.entity, extra: c.devSoc === null ? "" : Math.round(c.devSoc) + " %"});
       } else {
@@ -226,7 +234,7 @@ class EnergyFlowCustomCard extends HTMLElement {
         wires.push({...line(xL + R, yMid, hx - R, yMid), color: c.home.color, active: flow !== null && flow > MIN});
         if (c.hasDev) wires.push({...line(xC + R, yMid, xR - R, yMid), color: c.device.color, active: c.devW !== null && c.devW > MIN});
         this._battery(c, b, wires, nodes, line, MIN);
-        nodes.push({x: xL, y: yMid, pos: "below", name: c.grid.name, value: fmtAbs(c.gridW), icon: c.grid.icon, color: c.grid.color, entity: c.grid.entity});
+        nodes.push({x: xL, y: yMid, pos: "below", name: c.grid.name, lines: gridLines(c), icon: c.grid.icon, color: c.gridW !== null && c.gridW < 0 ? EF_EXPORT_COLOR : c.grid.color, entity: c.grid.entity});
         nodes.push({x: hx, y: yMid, pos: "below", name: c.home.name, value: this.fmt(c.homeW), icon: c.home.icon, color: c.home.color, entity: c.home.entity});
         if (c.hasDev) nodes.push({x: xR, y: yMid, pos: "below", name: c.device.name, value: this.fmt(c.devW), icon: c.device.icon, color: c.device.color, entity: c.device.entity, extra: c.devSoc === null ? "" : Math.round(c.devSoc) + " %"});
       }
@@ -300,7 +308,7 @@ class EnergyFlowCustomCard extends HTMLElement {
     this._nodes.innerHTML = F.nodes.map(n =>
       '<div class="flow-node" style="left:' + n.x + 'px;top:' + n.y + 'px;--node-color:' + n.color + ';--d:' + (L.R * 2) + 'px" data-e="' + this.esc(n.entity || "") + '"' + (n.entity ? ' tabindex="0" role="button"' : "") + '>' +
       (n.extra ? '<span class="node-extra">' + this.esc(n.extra) + '</span>' : "") +
-      this.ico(n.icon, n.color) + '<strong>' + this.esc(n.value) + '</strong><span class="flow-label ' + n.pos + '">' + this.esc(n.name) + '</span></div>').join("");
+      this.ico(n.icon, n.color) + (n.lines ? n.lines.map(l => '<strong class="ln" style="color:' + l.color + '">' + this.esc(l.text) + '</strong>').join('') : '<strong>' + this.esc(n.value) + '</strong>') + '<span class="flow-label ' + n.pos + '">' + this.esc(n.name) + '</span></div>').join("");
     this._panels.innerHTML = this._panelsHtml(cs);
   }
 
@@ -391,7 +399,7 @@ class EnergyFlowCustomCard extends HTMLElement {
     .flow-node{position:absolute;z-index:1;width:var(--d);height:var(--d);transform:translate(-50%,-50%);border:2px solid var(--node-color);border-radius:50%;background:var(--card-background-color,#222530);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1.12;cursor:pointer;text-align:center;outline:none}
     .flow-node:focus-visible{box-shadow:0 0 0 2px var(--primary-color,#03a9f4)}
     .flow-node strong{font-size:14px;white-space:nowrap;font-weight:500}.node-extra{font-size:11px;color:var(--secondary-text-color,#c8ccd9)}
-    .compact .flow-node strong{font-size:12px}.compact .flow-label{font-size:12px}.compact .flow-node ha-icon{--mdc-icon-size:22px!important}
+    .flow-node strong.ln{font-size:12px;line-height:1.15}.compact .flow-node strong{font-size:12px}.compact .flow-node strong.ln{font-size:11px}.compact .flow-label{font-size:12px}.compact .flow-node ha-icon{--mdc-icon-size:22px!important}
     .flow-label{position:absolute;left:50%;transform:translateX(-50%);font-size:13px;line-height:1.25;white-space:nowrap;font-weight:400;color:var(--secondary-text-color,#abb2c0)}
     .flow-label.above{bottom:calc(100% + 5px)}.flow-label.below{top:calc(100% + 5px)}
     .panels{container-type:inline-size}
@@ -449,7 +457,7 @@ const EF_ICONS = {
 
 const EF_LABELS = {
   name: "Name (Beschriftung)", icon: "Icon", color: "Farbe", entity: "Sensor (Leistung)", meter_reading: "Zählerstand (kWh-Sensor)",
-  invert: "Vorzeichen umkehren", enabled: "Anzeigen", soc: "Ladestand (%-Sensor)",
+  invert: "Vorzeichen umkehren", display_state: "Anzeige Bezug/Einspeisung", enabled: "Anzeigen", soc: "Ladestand (%-Sensor)",
   base_decimals: "Nachkommastellen (W)", kilo_decimals: "Nachkommastellen (kW)", kilo_threshold: "Umschaltung auf kW ab (W)",
   clickable_entities: "Klick öffnet Sensor-Dialog", disable_dots: "Bewegte Punkte ausschalten", no_labels: "Beschriftungen ausblenden",
   title: "Titel", hint: "Zusatztext (rechts)", type: "Typ", circuit: "Stromkreis", show_meter: "Leistung & Zählerstand", show_bar: "Verteilungsbalken",
@@ -570,7 +578,7 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
       circuit: [text("name")],
       title: [text("title")],
       advanced: [two(num("base_decimals"), num("kilo_decimals")), num("kilo_threshold"), two(bool("clickable_entities"), bool("disable_dots")), bool("no_labels")],
-      grid: [ent("entity"), two(text("name"), icon), two(color, ent("meter_reading")), bool("invert")],
+      grid: [ent("entity"), two(text("name"), icon), two(color, ent("meter_reading")), {name: "display_state", selector: {select: {mode: "dropdown", options: [{value: "two_way", label: "Beide Richtungen (↑ Einspeisung, ↓ Bezug)"}, {value: "one_way", label: "Nur Bezug (↓)"}, {value: "one_way_reverse", label: "Nur Einspeisung (↑)"}]}}}, bool("invert")],
       solar: [bool("enabled"), ent("entity"), two(text("name"), icon), color],
       home: [ent("entity"), two(text("name"), icon), color],
       device: [bool("enabled"), ent("entity"), two(text("name"), icon), two(color, ent("soc"))],
@@ -662,7 +670,7 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
     c[kind] = c[kind] || {};
     this._header(wrap, (c.name || "Stromkreis") + " › " + def.label);
     wrap.appendChild(this._form(this._S()[kind], c[kind], {entityHelper: kind === "home" || kind === "device" || kind === "battery",
-      map: o => ({icon: def.icon, ...o, color: efToRgb(o.color, def.color)})}));
+      map: o => ({icon: def.icon, ...(kind === "grid" ? {display_state: "two_way"} : {}), ...o, color: efToRgb(o.color, def.color)})}));
   }
 
   _pagePanel(wrap, p, i) {
