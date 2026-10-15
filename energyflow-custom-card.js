@@ -1,9 +1,9 @@
-/* EnergyFlow Custom Card — v0.5.3
+/* EnergyFlow Custom Card — v0.5.4
  * Two electrically separate meters. PV connects exclusively to meter 1.
  *
  * Flow geometry: circles and SVG paths share ONE pixel coordinate system.
  * The flow area is measured (ResizeObserver), all positions are derived from
- * the constants in layout(), and the SVG viewBox equals the real pixel size
+ * the constants in _geom(), and the SVG viewBox equals the real pixel size
  * (no non-uniform scaling). Changing a constant moves circles and lines together.
  */
 class EnergyFlowCustomCard extends HTMLElement {
@@ -37,7 +37,7 @@ class EnergyFlowCustomCard extends HTMLElement {
    * Proportions follow Power Flow Card Plus: 80 px circles, PV top centre,
    * grid left / house right on one row, EV above house, branch lines leave the
    * PV circle left/right of its centre and reach grid/house above the blue line. */
-  layout(W){
+  _geom(W){
     const R=W<400?36:40;                 // circle radius (PFC+: 80 px diameter)
     const L={W,R};
     L.xL=R+12;                           // left column  (Netz Haus, Netz WP)
@@ -52,20 +52,20 @@ class EnergyFlowCustomCard extends HTMLElement {
     return L;
   }
   /* Vertical leg, quarter-circle bend, horizontal leg: (sx,sy) -> (ex,ey). */
-  elbow(sx,sy,ex,ey){
+  _elbow(sx,sy,ex,ey){
     const dir=Math.sign(ex-sx)||1, v=ey-sy, h=Math.abs(ex-sx);
     const r=Math.max(0,Math.min(v,h-8)), k=0.5523*r, y1=ey-r, f=n=>Math.round(n*10)/10;
     return {d:'M'+f(sx)+' '+f(sy)+' V'+f(y1)+' C'+f(sx)+' '+f(y1+k)+' '+f(sx+dir*(r-k))+' '+f(ey)+' '+f(sx+dir*r)+' '+f(ey)+' H'+f(ex),
             len:(v-r)+(h-r)+Math.PI*r/2};
   }
-  flowPaths(L){
+  _paths(L){
     const {R,xL,xC,xR,yTop,yMid,yWp,branchDx:dx,branchDy:dy}=L, f=n=>Math.round(n*10)/10;
     const pvY=yTop+Math.sqrt(R*R-dx*dx);          // point on PV circle bottom at ±dx
     const sideX=Math.sqrt(R*R-dy*dy);              // point on grid/house circle side at -dy
     const line=(x1,y1,x2,y2)=>({d:'M'+f(x1)+' '+f(y1)+' L'+f(x2)+' '+f(y2),len:Math.hypot(x2-x1,y2-y1)});
     return {
-      solarToGrid:this.elbow(xC-dx,pvY,xL+sideX,yMid-dy),   // violet: PV -> Netz Haus
-      solarToHome:this.elbow(xC+dx,pvY,xR-sideX,yMid-dy),   // orange: PV -> Haus
+      solarToGrid:this._elbow(xC-dx,pvY,xL+sideX,yMid-dy),   // violet: PV -> Netz Haus
+      solarToHome:this._elbow(xC+dx,pvY,xR-sideX,yMid-dy),   // orange: PV -> Haus
       gridToHome:line(xL+R,yMid,xR-R,yMid),                 // blue:   Netz Haus -> Haus
       homeToEv:line(xR,yMid-R,xR,yTop+R),                   // green:  Haus -> Auto
       gridToWp:line(xL+R,yWp,xC-R,yWp)                      // violet: Netz WP -> Wärmepumpe
@@ -110,7 +110,7 @@ class EnergyFlowCustomCard extends HTMLElement {
     const autarky=hv>0&&pvUse!==null?Math.min(100,Math.round(pvUse/hv*100)):null;
 
     /* ---------- Flow diagram ---------- */
-    const L=this.layout(this._w||470), P=this.flowPaths(L), MIN=5;
+    const L=this._geom(this._w||470), P=this._paths(L), MIN=5;
     const active={
       solarToGrid:grid!==null&&-grid>MIN,
       solarToHome:pvUse!==null&&pvUse>MIN,
