@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.3.0
+/* EnergyFlow Custom Card — v0.4.0
  * Two electrically separate meters. PV connects exclusively to meter 1.
  */
 class EnergyFlowCustomCard extends HTMLElement {
@@ -39,12 +39,12 @@ class EnergyFlowCustomCard extends HTMLElement {
     const consumerRows=entries.map(x=>consumer(x.name||x.entity,this.watts(x.entity),x.icon||'mdi:flash','#'+String(x.color||'9c80d4').replace(/^#/,'') ,x.entity)).join('');
     const wpTotal=this.kwh(wp.meter_reading),houseTotal=this.kwh(h.meter_reading);
     this.shadowRoot.innerHTML='<style>'+this.css()+'</style>'+
-      '<ha-card><div class="head"><span>'+ico('mdi:transmission-tower','#cfd6e5')+' '+this.esc(c.title||'Energiefluss')+'</span><small>● Live</small></div>'+
+      '<ha-card><div class="head"><span>'+ico('mdi:transmission-tower','#cfd6e5')+' '+this.esc(c.title||'Energiefluss')+'</span></div>'+
       '<div class="flow-layout"><svg class="flow-wires" viewBox="0 0 1000 520" preserveAspectRatio="none" aria-hidden="true">'+
-      '<path class="wire solar-to-grid" d="M135 226 C290 226 335 71 500 71"/><path class="wire solar-to-home" d="M500 71 C642 71 693 285 865 285"/><path class="wire grid-to-home" d="M135 226 C395 258 603 295 865 285"/><path class="wire ev-line" d="M865 68 V285"/><path class="wire wp-wire" d="M135 441 H485"/>'+
-      '<circle class="dot dot-purple" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 226 C290 226 335 71 500 71"/></circle>'+
-      '<circle class="dot dot-orange" r="5"><animateMotion dur="4s" repeatCount="indefinite" path="M500 71 C642 71 693 285 865 285"/></circle>'+
-      '<circle class="dot dot-blue" r="5"><animateMotion dur="4.5s" repeatCount="indefinite" path="M135 226 C395 258 603 295 865 285"/></circle>'+
+      '<path class="wire solar-to-grid" d="M135 258 C290 258 335 90 500 90"/><path class="wire solar-to-home" d="M500 90 C642 90 693 285 865 285"/><path class="wire grid-to-home" d="M135 258 C395 275 603 285 865 285"/><path class="wire ev-line" d="M865 68 V285"/><path class="wire wp-wire" d="M135 441 H485"/>'+
+      '<circle class="dot dot-purple" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 258 C290 258 335 90 500 90"/></circle>'+
+      '<circle class="dot dot-orange" r="5"><animateMotion dur="4s" repeatCount="indefinite" path="M500 90 C642 90 693 285 865 285"/></circle>'+
+      '<circle class="dot dot-blue" r="5"><animateMotion dur="4.5s" repeatCount="indefinite" path="M135 258 C395 275 603 285 865 285"/></circle>'+
       '<circle class="dot dot-wp" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 441 H485"/></circle></svg>'+
       '<div class="flow-pv">'+circle("PV-Produktion",this.fmt(solar),"mdi:solar-power","#e9a219",h.solar)+'</div>'+
       '<div class="flow-grid">'+circle("Netz Haus",grid===null?"–":(grid<0?"← ":"→ ")+this.fmt(Math.abs(grid)),"mdi:transmission-tower",grid<0?"#aa70dc":"#329af0",h.grid)+'</div>'+
@@ -52,11 +52,11 @@ class EnergyFlowCustomCard extends HTMLElement {
       '<div class="flow-ev">'+circle("Auto",this.fmt(ev),"mdi:car","#24a85a",e.power,soc===null?"":Math.round(soc)+" %")+'</div>'+
       '<div class="flow-gridwp">'+circle("Netz WP",this.fmt(hp),"mdi:transmission-tower","#399ef2",wp.power)+'</div>'+
       '<div class="flow-wp">'+circle("Wärmepumpe",this.fmt(hp),"mdi:heat-pump","#b184e5",wp.power)+'</div></div>'+
-      '<div class="meters"><section class="panel"><h3>'+ico('mdi:home-lightning-bolt','#e9a219')+' Hausstromzähler</h3><p class="hint">Inklusive Wallbox</p>'+
+      '<div class="meters"><section class="panel"><h3>'+ico('mdi:home-lightning-bolt','#e9a219')+' Hausstrom</h3>'+
       '<div class="metric"><span>Aktuelle Leistung<strong>'+this.fmt(hv)+'</strong></span><span>Zählerstand<strong>'+this.fmtKwh(houseTotal)+'</strong></span></div>'+
       '<div class="stack"><i style="width:'+pHouse+'%;background:#349ce9"></i><i style="width:'+pEv+'%;background:#23985c"></i></div>'+
-      consumer('Haus ohne Wallbox',base,'mdi:home','#349ce9','')+consumer('Wallbox',ev,'mdi:car','#23985c',e.power)+consumerRows+'</section>'+
-      '<section class="panel"><h3>'+ico('mdi:heat-pump','#b184e5')+' Wärmepumpe</h3><p class="hint">Separater Stromkreis · ohne PV</p>'+
+      consumer('Hausverbrauch',base,'mdi:home','#349ce9','')+consumer('Wallbox',ev,'mdi:car','#23985c',e.power)+consumerRows+'</section>'+
+      '<section class="panel"><h3>'+ico('mdi:heat-pump','#b184e5')+' Wärmestrom</h3>'+
       '<div class="metric"><span>Aktuelle Leistung<strong>'+this.fmt(hp)+'</strong></span><span>Zählerstand<strong>'+this.fmtKwh(wpTotal)+'</strong></span></div>'+
       consumer('Wärmepumpe',hp,'mdi:heat-pump','#b184e5',wp.power)+
       '<div class="wp-extra"><span>'+ico('mdi:transmission-tower','#b184e5')+' Netzversorgung</span><strong>'+this.fmt(hp)+'</strong></div>'+
@@ -80,9 +80,9 @@ class EnergyFlowCustomCard extends HTMLElement {
     .flow-node{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;text-align:center}
     .flow-circle{width:78px;height:78px;border:2px solid var(--node-color);border-radius:50%;background:var(--card-background-color,#222530);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;line-height:1.12}
     .flow-circle strong{font-size:14px;white-space:nowrap;font-weight:600}.node-extra{font-size:11px;color:#c8ccd9}
-    .flow-label{font-size:13px;line-height:1.25;white-space:nowrap;font-weight:400}
+    .flow-label{font-size:13px;line-height:1.25;white-space:nowrap;font-weight:400;order:2}.flow-pv .flow-label,.flow-ev .flow-label{order:-1;margin-bottom:3px}
     .flow-pv,.flow-grid,.flow-home,.flow-ev,.flow-gridwp,.flow-wp{position:absolute;transform:translateX(-50%);z-index:1}
-    .flow-pv{left:50%;top:7px}.flow-grid{left:13.5%;top:107px}.flow-home{left:86.5%;top:145px}
+    .flow-pv{left:50%;top:7px}.flow-grid{left:13.5%;top:145px}.flow-home{left:86.5%;top:145px}
     .flow-ev{left:86.5%;top:5px}.flow-gridwp{left:13.5%;top:245px}.flow-wp{left:48.5%;top:245px}
     .meters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
     .panel{border:1px solid rgba(202,211,245,.12);border-radius:17px;padding:12px;background:rgba(15,20,35,.16);min-width:0}
