@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.10.0
+/* EnergyFlow Custom Card — v0.10.1
  * Modular energy flow card: any number of electrically separate circuits
  * (each with its own grid meter, optional PV, a "home" node and an optional device),
  * plus freely configurable detail panels. Visual editor included.
@@ -11,7 +11,7 @@
  * (e.g. "layout", "preview", "hass"), they would be shadowed.
  */
 
-const EF_VERSION = "0.10.0";
+const EF_VERSION = "0.10.1";
 const EF_TYPE = "custom:energyflow-custom-card";
 const EF_EXPORT_COLOR = "#a66add";
 const EF_PALETTE = {orange:"#e9a219",yellow:"#f0ba27",blue:"#329af0",violet:"#b184e5",green:"#24a85a",teal:"#23a9aa",red:"#e0556b",grey:"#8b92a5"};
@@ -428,12 +428,13 @@ class EnergyFlowCustomCard extends HTMLElement {
     .gauge-track{stroke:#353d4d}.gauge-fill{stroke-dashoffset:0}
     .gauge strong{font-size:20px;position:relative;margin-top:-30px;z-index:1}
     .gauge span{font-size:13px;color:var(--secondary-text-color,#abb2c0);margin-top:8px;line-height:1.3;overflow-wrap:normal;hyphens:auto}
-    .wp-detail{display:flex;align-items:center;gap:8px;padding:11px 0;border-top:1px solid rgba(202,211,245,.08);min-width:0}
-    .wp-detail ha-icon{flex-shrink:0;--mdc-icon-size:21px!important}
-    .wp-detail-main{display:flex;flex-direction:column;gap:3px;flex:1 0 auto;font-size:13px}
-    .wp-detail-main span{color:var(--secondary-text-color,#abb2c0);font-size:12px}
-    .wp-detail-values{display:flex;flex-direction:column;text-align:right;gap:3px;margin-left:auto;min-width:0;flex:0 1 auto}
-    .wp-detail-values strong{font-size:13px}.wp-detail-values span{font-size:11px;color:var(--secondary-text-color,#abb2c0)}
+    .wp-detail{display:flex;align-items:center;gap:6px;padding:7px 0;min-width:0;font-size:12px}
+    .wp-detail ha-icon{flex-shrink:0;--mdc-icon-size:20px!important}
+    .wp-detail-main{display:flex;flex-direction:column;gap:2px;flex:1 1 auto;min-width:0;font-size:12px}
+    .wp-detail-main strong{font-size:12px;font-weight:400}
+    .wp-detail-main span{color:var(--secondary-text-color,#abb2c0);font-size:11px}
+    .wp-detail-values{display:flex;flex-direction:column;text-align:right;gap:2px;margin-left:auto;min-width:0;flex:0 1 auto}
+    .wp-detail-values strong{font-size:12px;font-weight:700}.wp-detail-values span{font-size:11px;color:var(--secondary-text-color,#abb2c0)}
     @media(max-width:460px){ha-card{padding:11px}.panel{padding:13px}}
     @media(prefers-reduced-motion:reduce){.flow-wires circle{display:none}}
   `; }
