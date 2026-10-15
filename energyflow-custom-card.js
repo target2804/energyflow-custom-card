@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.5.0
+/* EnergyFlow Custom Card — v0.5.1
  * Two electrically separate meters. PV connects exclusively to meter 1.
  */
 class EnergyFlowCustomCard extends HTMLElement {
@@ -38,14 +38,20 @@ class EnergyFlowCustomCard extends HTMLElement {
     const entries=Array.isArray(c.consumers)?c.consumers:[];
     const consumerRows=entries.map(x=>consumer(x.name||x.entity,this.watts(x.entity),x.icon||'mdi:flash','#'+String(x.color||'9c80d4').replace(/^#/,'') ,x.entity)).join('');
     const wpTotal=this.kwh(wp.meter_reading),houseTotal=this.kwh(h.meter_reading);
+    const compressorStatus=wp.compressor_status||"sensor.buderus_gateway_101730536_kompressorstatus";
+    const heaterStatus=wp.heater_status||"sensor.buderus_gateway_101730536_heizstabstatus";
+    const compressorEnergy=wp.compressor_energy||"sensor.buderus_gateway_101730536_stromverbrauch_warmepumpe_gesamt";
+    const heaterEnergy=wp.heater_energy||"sensor.buderus_gateway_101730536_stromverbrauch_elektrischer_zuheizer_gesamt";
+    const statusLabel=id=>{const raw=this.state(id)?.state;if(!raw||["unknown","unavailable"].includes(raw))return "–";return ({off:"Aus",heating:"Heizen",cooling:"Kühlen",dhw:"Warmwasser",defrost:"Abtauen",alarm:"Störung",pool:"Pool",pool_heat:"Pool heizen"}[raw]||raw);};
+    const deviceRow=(label,icon,statusId,energyId,powerId)=>'<div class="wp-detail" data-e="'+this.esc(statusId)+'">'+ico(icon,"#b184e5")+'<div class="wp-detail-main"><strong>'+this.esc(label)+'</strong><span>'+this.esc(statusLabel(statusId))+'</span></div><div class="wp-detail-values">'+(powerId?'<strong>'+this.fmt(this.watts(powerId))+'</strong>':'')+'<span>'+this.fmtKwh(this.kwh(energyId))+' gesamt</span></div></div>';
     this.shadowRoot.innerHTML='<style>'+this.css()+'</style>'+
       '<ha-card>'+
-      '<div class="flow-layout"><svg class="flow-wires" viewBox="0 0 1000 520" preserveAspectRatio="none" aria-hidden="true">'+
-      '<path class="wire solar-to-grid" d="M135 268 H444 Q500 268 500 215 V165"/><path class="wire solar-to-home" d="M500 165 V215 Q500 268 556 268 H865"/><path class="wire grid-to-home" d="M135 292 H865"/><path class="wire ev-line" d="M865 160 V225"/><path class="wire wp-wire" d="M135 441 H485"/>'+
-      '<circle class="dot dot-purple" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 268 H444 Q500 268 500 215 V165"/></circle>'+
-      '<circle class="dot dot-orange" r="5"><animateMotion dur="4s" repeatCount="indefinite" path="M500 165 V215 Q500 268 556 268 H865"/></circle>'+
-      '<circle class="dot dot-blue" r="5"><animateMotion dur="4.5s" repeatCount="indefinite" path="M135 292 H865"/></circle>'+
-      '<circle class="dot dot-wp" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 441 H485"/></circle></svg>'+
+      '<div class="flow-layout"><svg class="flow-wires" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">'+
+      '<path class="wire solar-to-grid" d="M135 245 H404 Q462 245 462 197 V153"/><path class="wire solar-to-home" d="M538 153 V222 Q538 267 602 267 H865"/><path class="wire grid-to-home" d="M135 304 H865"/><path class="wire ev-line" d="M865 160 V225"/><path class="wire wp-wire" d="M135 505 H485"/>'+
+      '<circle class="dot dot-purple" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 245 H404 Q462 245 462 197 V153"/></circle>'+
+      '<circle class="dot dot-orange" r="5"><animateMotion dur="4s" repeatCount="indefinite" path="M538 153 V222 Q538 267 602 267 H865"/></circle>'+
+      '<circle class="dot dot-blue" r="5"><animateMotion dur="4.5s" repeatCount="indefinite" path="M135 304 H865"/></circle>'+
+      '<circle class="dot dot-wp" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 505 H485"/></circle></svg>'+
       '<div class="flow-pv">'+circle("PV-Produktion",this.fmt(solar),"mdi:solar-power","#e9a219",h.solar)+'</div>'+
       '<div class="flow-grid">'+circle("Netz Haus",grid===null?"–":(grid<0?"← ":"→ ")+this.fmt(Math.abs(grid)),"mdi:transmission-tower",grid<0?"#aa70dc":"#329af0",h.grid)+'</div>'+
       '<div class="flow-home">'+circle("Haus",this.fmt(hv),"mdi:home","#e9a219",h.total)+'</div>'+
@@ -58,9 +64,8 @@ class EnergyFlowCustomCard extends HTMLElement {
       consumer('Hausverbrauch',base,'mdi:home','#349ce9','')+consumer('Wallbox',ev,'mdi:car','#23985c',e.power)+consumerRows+'</section>'+
       '<section class="panel"><h3>'+ico('mdi:heat-pump','#b184e5')+' Wärmestrom</h3>'+
       '<div class="metric"><span>Aktuelle Leistung<strong>'+this.fmt(hp)+'</strong></span><span>Zählerstand<strong>'+this.fmtKwh(wpTotal)+'</strong></span></div>'+
-      consumer('Wärmepumpe',hp,'mdi:heat-pump','#b184e5',wp.power)+
-      '<div class="wp-extra"><span>'+ico('mdi:transmission-tower','#b184e5')+' Netzversorgung</span><strong>'+this.fmt(hp)+'</strong></div>'+
-      '<div class="wp-extra"><span>'+ico('mdi:solar-power','#b184e5')+' PV-Versorgung</span><strong>Keine</strong></div></section></div>'+
+      deviceRow('Kompressor','mdi:heat-pump',compressorStatus,compressorEnergy,wp.compressor_power)+
+      deviceRow('Heizstab','mdi:radiator',heaterStatus,heaterEnergy,wp.heater_power)+'</section></div>'+
       '<section class="panel balance"><h3>'+ico('mdi:solar-power','#e9a219')+' PV & Bilanz <span class="hint">Hausstromkreis</span></h3>'+
       '<div class="kpis"><div class="kpi"><span>PV-Produktion</span><strong>'+this.fmt(solar)+'</strong></div>'+
       '<div class="kpi"><span>PV-Einspeisung</span><strong>'+this.fmt(grid===null?null:Math.max(0,-grid))+'</strong></div>'+
@@ -72,7 +77,7 @@ class EnergyFlowCustomCard extends HTMLElement {
     ha-card{background:var(--ha-card-background,rgba(36,39,58,.72));border:1px solid rgba(202,211,245,.12);border-radius:22px;padding:16px;color:var(--primary-text-color,#fff);box-shadow:none;overflow:hidden;font-family:var(--primary-font-family,Roboto,"Arial",sans-serif)}
     .head{display:flex;justify-content:space-between;align-items:center;font-size:19px;font-weight:600;margin-bottom:15px}
     .head>span,h3{display:flex;align-items:center;gap:8px}.head small{font-size:12px;color:#31c47a;font-weight:500}
-    .flow-layout{height:335px;position:relative;isolation:isolate;margin:0 0 20px}
+    .flow-layout{height:405px;position:relative;isolation:isolate;margin:0 0 20px}
     .flow-wires{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
     .wire{fill:none;stroke-width:2.6;stroke-linecap:round;opacity:.85}
     .solar-to-grid,.wp-wire{stroke:#a66add}.solar-to-home{stroke:#e9a219}.grid-to-home{stroke:#329af0}.ev-line{stroke:#269d54}
@@ -83,7 +88,7 @@ class EnergyFlowCustomCard extends HTMLElement {
     .flow-label{font-size:13px;line-height:1.25;white-space:nowrap;font-weight:400;order:2}.flow-pv .flow-label,.flow-ev .flow-label{order:-1;margin-bottom:3px}
     .flow-pv,.flow-grid,.flow-home,.flow-ev,.flow-gridwp,.flow-wp{position:absolute;transform:translateX(-50%);z-index:1}
     .flow-pv{left:50%;top:7px}.flow-grid{left:13.5%;top:145px}.flow-home{left:86.5%;top:145px}
-    .flow-ev{left:86.5%;top:5px}.flow-gridwp{left:13.5%;top:245px}.flow-wp{left:48.5%;top:245px}
+    .flow-ev{left:86.5%;top:5px}.flow-gridwp{left:13.5%;top:310px}.flow-wp{left:48.5%;top:310px}
     .meters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
     .panel{border:1px solid rgba(202,211,245,.12);border-radius:17px;padding:12px;background:rgba(15,20,35,.16);min-width:0}
     h3{font-size:15px;line-height:1.35;font-weight:600;margin:0 0 5px;overflow-wrap:normal}
@@ -106,7 +111,13 @@ class EnergyFlowCustomCard extends HTMLElement {
     .gauge-track{stroke:#353d4d}.gauge-fill{stroke-dashoffset:0}
     .gauge strong{font-size:17px;position:relative;margin-top:-24px;z-index:1}
     .gauge span{font-size:11px;color:var(--secondary-text-color,#abb2c0);margin-top:6px;line-height:1.3;overflow-wrap:anywhere}
-    @media(max-width:460px){ha-card{padding:11px}.flow-circle{width:69px;height:69px}.flow-circle strong{font-size:12px}.flow-label{font-size:12px}.meters{grid-template-columns:1fr}.panel{padding:13px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:15px}.flow-gridwp,.flow-wp{top:236px}}
+    .wp-detail{display:flex;align-items:center;gap:8px;padding:11px 0;border-top:1px solid rgba(202,211,245,.08);min-width:0}
+    .wp-detail ha-icon{flex-shrink:0;--mdc-icon-size:21px!important}
+    .wp-detail-main{display:flex;flex-direction:column;gap:3px;min-width:0;font-size:13px}
+    .wp-detail-main span{color:var(--secondary-text-color,#abb2c0);font-size:12px}
+    .wp-detail-values{display:flex;flex-direction:column;text-align:right;gap:3px;margin-left:auto;white-space:nowrap}
+    .wp-detail-values strong{font-size:13px}.wp-detail-values span{font-size:11px;color:var(--secondary-text-color,#abb2c0)}
+    @media(max-width:460px){ha-card{padding:11px}.flow-circle{width:69px;height:69px}.flow-circle strong{font-size:12px}.flow-label{font-size:12px}.meters{grid-template-columns:1fr}.panel{padding:13px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:15px}.flow-gridwp,.flow-wp{top:310px}}
     @media(prefers-reduced-motion:reduce){.dot{display:none}}
   `;}
 }
