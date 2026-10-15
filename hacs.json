@@ -1,0 +1,6 @@
+{
+  "name": "EnergyFlow Custom Card",
+  "filename": "energyflow-custom-card.js",
+  "render_readme": true,
+  "homeassistant": "2025.1.0"
+}
