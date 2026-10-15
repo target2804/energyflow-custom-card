@@ -32,7 +32,6 @@ class EnergyFlowCustomCard extends HTMLElement {
     const own=solar>0&&pvUse!==null?Math.min(100,Math.round(pvUse/solar*100)):null;
     const autarky=hv>0&&pvUse!==null?Math.min(100,Math.round(pvUse/hv*100)):null;
     const entries=Array.isArray(c.consumers)?c.consumers:[];
-    const consumerRows=entries.map((x,i)=>{const w=this.watts(x.entity);return '<div class="consumer" data-e="'+this.esc(x.entity)+'"><span class="dot" style="background:'+this.esc(x.color||"#9c80d4")+'"></span><span>'+this.esc(x.name||x.entity)+'</span><strong>'+this.fmt(w)+'</strong></div>'}).join("");
     const ico=(name,color)=>'<ha-icon icon="'+this.esc(name)+'" style="color:'+color+';--mdc-icon-size:25px"></ha-icon>';
     const circle=(name,value,icon,color,entity,extra='')=>'<div class="flow-node" data-e="'+this.esc(entity||'')+'"><div class="flow-circle" style="--node-color:'+color+'">'+(extra?'<span class="node-extra">'+this.esc(extra)+'</span>':'')+ico(icon,color)+'<strong>'+this.esc(value)+'</strong></div><span class="flow-label">'+this.esc(name)+'</span></div>';
     const gauge=(label,percent,color)=>{const good=Number.isFinite(percent),p=good?Math.min(100,Math.max(0,percent)):0;return '<div class="gauge"><div class="gauge-arc" style="--gauge-color:'+color+';--gauge-value:'+p+'"><strong>'+(good?Math.round(percent)+' %':'–')+'</strong></div><span>'+label+'</span></div>';};
