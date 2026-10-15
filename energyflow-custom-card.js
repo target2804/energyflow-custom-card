@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.4.0
+/* EnergyFlow Custom Card — v0.5.0
  * Two electrically separate meters. PV connects exclusively to meter 1.
  */
 class EnergyFlowCustomCard extends HTMLElement {
@@ -39,12 +39,12 @@ class EnergyFlowCustomCard extends HTMLElement {
     const consumerRows=entries.map(x=>consumer(x.name||x.entity,this.watts(x.entity),x.icon||'mdi:flash','#'+String(x.color||'9c80d4').replace(/^#/,'') ,x.entity)).join('');
     const wpTotal=this.kwh(wp.meter_reading),houseTotal=this.kwh(h.meter_reading);
     this.shadowRoot.innerHTML='<style>'+this.css()+'</style>'+
-      '<ha-card><div class="head"><span>'+ico('mdi:transmission-tower','#cfd6e5')+' '+this.esc(c.title||'Energiefluss')+'</span></div>'+
+      '<ha-card>'+
       '<div class="flow-layout"><svg class="flow-wires" viewBox="0 0 1000 520" preserveAspectRatio="none" aria-hidden="true">'+
-      '<path class="wire solar-to-grid" d="M135 258 C290 258 335 90 500 90"/><path class="wire solar-to-home" d="M500 90 C642 90 693 285 865 285"/><path class="wire grid-to-home" d="M135 258 C395 275 603 285 865 285"/><path class="wire ev-line" d="M865 68 V285"/><path class="wire wp-wire" d="M135 441 H485"/>'+
-      '<circle class="dot dot-purple" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 258 C290 258 335 90 500 90"/></circle>'+
-      '<circle class="dot dot-orange" r="5"><animateMotion dur="4s" repeatCount="indefinite" path="M500 90 C642 90 693 285 865 285"/></circle>'+
-      '<circle class="dot dot-blue" r="5"><animateMotion dur="4.5s" repeatCount="indefinite" path="M135 258 C395 275 603 285 865 285"/></circle>'+
+      '<path class="wire solar-to-grid" d="M135 268 H444 Q500 268 500 215 V165"/><path class="wire solar-to-home" d="M500 165 V215 Q500 268 556 268 H865"/><path class="wire grid-to-home" d="M135 292 H865"/><path class="wire ev-line" d="M865 160 V225"/><path class="wire wp-wire" d="M135 441 H485"/>'+
+      '<circle class="dot dot-purple" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 268 H444 Q500 268 500 215 V165"/></circle>'+
+      '<circle class="dot dot-orange" r="5"><animateMotion dur="4s" repeatCount="indefinite" path="M500 165 V215 Q500 268 556 268 H865"/></circle>'+
+      '<circle class="dot dot-blue" r="5"><animateMotion dur="4.5s" repeatCount="indefinite" path="M135 292 H865"/></circle>'+
       '<circle class="dot dot-wp" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 441 H485"/></circle></svg>'+
       '<div class="flow-pv">'+circle("PV-Produktion",this.fmt(solar),"mdi:solar-power","#e9a219",h.solar)+'</div>'+
       '<div class="flow-grid">'+circle("Netz Haus",grid===null?"–":(grid<0?"← ":"→ ")+this.fmt(Math.abs(grid)),"mdi:transmission-tower",grid<0?"#aa70dc":"#329af0",h.grid)+'</div>'+
