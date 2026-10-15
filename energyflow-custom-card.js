@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.6.0
+/* EnergyFlow Custom Card — v0.6.1
  * Modular energy flow card: any number of electrically separate circuits
  * (each with its own grid meter, optional PV, a "home" node and an optional device),
  * plus freely configurable detail panels. Visual editor included.
@@ -11,7 +11,7 @@
  * (e.g. "layout", "preview", "hass"), they would be shadowed.
  */
 
-const EF_VERSION = "0.6.0";
+const EF_VERSION = "0.6.1";
 const EF_TYPE = "custom:energyflow-custom-card";
 const EF_EXPORT_COLOR = "#a66add";
 const EF_PALETTE = {orange:"#e9a219",yellow:"#f0ba27",blue:"#329af0",violet:"#b184e5",green:"#24a85a",teal:"#23a9aa",red:"#e0556b",grey:"#8b92a5"};
@@ -393,8 +393,8 @@ const EF_LABELS = {
   source: "Wert", status_entity: "Status-Sensor", energy_entity: "Energie gesamt (kWh-Sensor)", in_bar: "Im Verteilungsbalken",
   show_pv: "PV-Produktion", show_feed_in: "PV-Einspeisung", show_own: "Eigenverbrauchsquote", show_autarky: "Autarkiegrad"
 };
+const EF_ENTITY_HELPER = "Optional: leer lassen, wenn der Wert nicht angezeigt oder berechnet werden soll.";
 const EF_HELPERS = {
-  entity: "Leer lassen, wenn der Wert nicht angezeigt werden soll bzw. berechnet wird.",
   invert: "Home Assistant: positiv = Bezug, negativ = Einspeisung.",
   source: "Eigener Sensor, Haus-Gesamt, Gerät oder Rest (Haus minus Gerät)."
 };
@@ -431,12 +431,12 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
   _structural() { this._emit(); this._build(); }
 
   /* A ha-form bound to a plain object; writes changes back, drops empty values */
-  _form(schema, obj, {onChange, map, unmap} = {}) {
+  _form(schema, obj, {onChange, map, unmap, entityHelper} = {}) {
     const f = document.createElement("ha-form");
     f.hass = this._hass; f.schema = schema;
     f.data = map ? map(obj) : {...obj};
     f.computeLabel = s => EF_LABELS[s.name] || s.name;
-    f.computeHelper = s => EF_HELPERS[s.name] || "";
+    f.computeHelper = s => s.name === "entity" ? (entityHelper ? EF_ENTITY_HELPER : "") : (EF_HELPERS[s.name] || "");
     f.addEventListener("value-changed", ev => {
       ev.stopPropagation();
       const v = unmap ? unmap(ev.detail.value) : ev.detail.value;
@@ -499,11 +499,11 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
         this._btn("↑", () => this._move(cfg.circuits, i, -1)), this._btn("↓", () => this._move(cfg.circuits, i, 1)),
         this._btn("✕", () => { cfg.circuits.splice(i, 1); (cfg.panels || []).forEach(p => { if (Number(p.circuit) === i) p.circuit = 0; else if (Number(p.circuit) > i) p.circuit = Number(p.circuit) - 1; }); this._structural(); }, "danger")]});
       sec.body.appendChild(this._form(S.circuit, c, {onChange: () => { sec.querySelector(".st").textContent = (i + 1) + ". " + (c.name || "Stromkreis"); }}));
-      const sub = (key, title, schema, obj, open) => { const s2 = this._section("c" + i + key, title, {open}); s2.classList.add("sub"); s2.body.appendChild(this._form(schema, obj)); sec.body.appendChild(s2); };
-      sub("g", "Netz", S.grid, c.grid, true);
-      sub("s", "PV-Anlage (optional)", S.solar, c.solar, !!(c.solar.enabled || c.solar.entity));
-      sub("h", "Haus / Verbraucher", S.home, c.home, true);
-      sub("d", "Gerät, z. B. Auto/Wallbox (optional)", S.device, c.device, !!(c.device.enabled || c.device.entity));
+      const sub = (key, title, schema, obj, open, defs, entityHelper) => { const s2 = this._section("c" + i + key, title, {open}); s2.classList.add("sub"); s2.body.appendChild(this._form(schema, obj, {map: o => ({...defs, ...o}), entityHelper})); sec.body.appendChild(s2); };
+      sub("g", "Netz", S.grid, c.grid, true, {icon: "mdi:transmission-tower", color: "blue"}, false);
+      sub("s", "PV-Anlage (optional)", S.solar, c.solar, !!(c.solar.enabled || c.solar.entity), {icon: "mdi:solar-power", color: "orange"}, false);
+      sub("h", "Haus / Verbraucher", S.home, c.home, true, {icon: "mdi:home", color: "orange"}, true);
+      sub("d", "Gerät, z. B. Auto/Wallbox (optional)", S.device, c.device, !!(c.device.enabled || c.device.entity), {icon: "mdi:car", color: "green"}, false);
       wrap.appendChild(sec);
     });
     wrap.appendChild(this._btn("+ Stromkreis hinzufügen", () => { cfg.circuits.push({name: "Stromkreis " + (cfg.circuits.length + 1), grid: {name: "Netz"}, home: {name: "Haus"}}); this._structural(); }, "add"));
@@ -552,7 +552,7 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
             {name: "status_entity", selector: {entity: {}}},
             {name: "energy_entity", selector: {entity: {}}}
           ];
-          rs.body.appendChild(this._form(rowSchema, r, {map: o => ({source: "entity", ...o, in_bar: o.in_bar !== undefined ? o.in_bar : (o.source === "remainder" || o.source === "device")}),
+          rs.body.appendChild(this._form(rowSchema, r, {entityHelper: true, map: o => ({source: "entity", ...o, in_bar: o.in_bar !== undefined ? o.in_bar : (o.source === "remainder" || o.source === "device")}),
             onChange: o => { rs.querySelector(".st").textContent = (j + 1) + ". " + (o.name || o.entity || "Zeile"); }}));
           sec.body.appendChild(rs);
         });
