@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.11.0
+/* EnergyFlow Custom Card — v0.11.1
  * Modular energy flow card: any number of electrically separate circuits
  * (each with its own grid meter, optional PV, a "home" node and an optional device),
  * plus freely configurable detail panels. Visual editor included.
@@ -11,7 +11,7 @@
  * (e.g. "layout", "preview", "hass"), they would be shadowed.
  */
 
-const EF_VERSION = "0.11.0";
+const EF_VERSION = "0.11.1";
 const EF_TYPE = "custom:energyflow-custom-card";
 const EF_EXPORT_COLOR = "#a66add";
 const EF_PALETTE = {orange:"#e9a219",yellow:"#f0ba27",blue:"#329af0",violet:"#b184e5",green:"#24a85a",teal:"#23a9aa",red:"#e0556b",grey:"#8b92a5"};
@@ -494,16 +494,20 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
     f.data = map ? map(obj) : {...obj};
     f.computeLabel = s => EF_LABELS[s.name] || s.name;
     f.computeHelper = s => s.name === "entity" ? (entityHelper ? EF_ENTITY_HELPER : "") : (EF_HELPERS[s.name] || "");
+    /* ha-form updates its own .data BEFORE it fires value-changed, so f.data cannot serve as the "before" state:
+     * keep our own snapshot of what the form showed last. */
+    let prev = unmap ? unmap(f.data) : {...f.data};
     f.addEventListener("value-changed", ev => {
       ev.stopPropagation();
       const v = unmap ? unmap(ev.detail.value) : ev.detail.value;
-      const pv = unmap ? unmap(f.data) : f.data;
+      const pv = prev;
       Object.keys(v).forEach(k => {
         if (JSON.stringify(v[k]) === JSON.stringify(pv[k])) return;
         if (v[k] === undefined || v[k] === "" || v[k] === null) delete obj[k]; else obj[k] = v[k];
       });
       Object.keys(pv).forEach(k => { if (!(k in v)) delete obj[k]; });
       f.data = map ? map(obj) : {...obj};
+      prev = unmap ? unmap(f.data) : {...f.data};
       if (onChange) onChange(obj);
       this._emit();
     });
