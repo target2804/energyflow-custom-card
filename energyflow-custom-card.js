@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.1.0
+/* EnergyFlow Custom Card — v0.2.0
  * Two electrically separate meters. PV connects exclusively to meter 1.
  */
 class EnergyFlowCustomCard extends HTMLElement {
@@ -33,40 +33,44 @@ class EnergyFlowCustomCard extends HTMLElement {
     const autarky=hv>0&&pvUse!==null?Math.min(100,Math.round(pvUse/hv*100)):null;
     const entries=Array.isArray(c.consumers)?c.consumers:[];
     const consumerRows=entries.map((x,i)=>{const w=this.watts(x.entity);return '<div class="consumer" data-e="'+this.esc(x.entity)+'"><span class="dot" style="background:'+this.esc(x.color||"#9c80d4")+'"></span><span>'+this.esc(x.name||x.entity)+'</span><strong>'+this.fmt(w)+'</strong></div>'}).join("");
+    const gauge=(label,percent,color)=>{const valid=percent!==null&&Number.isFinite(percent);const fraction=valid?Math.max(0,Math.min(100,percent)):0;return '<div class="gauge"><svg viewBox="0 0 120 70" aria-hidden="true"><path d="M14 60 A46 46 0 0 1 106 60" fill="none" stroke="#363e50" stroke-width="12" stroke-linecap="round"/><path d="M14 60 A46 46 0 0 1 106 60" fill="none" stroke="'+color+'" stroke-width="12" stroke-linecap="round" pathLength="100" stroke-dasharray="'+fraction+' 100"/></svg><b>'+ (valid?Math.round(percent)+' %':'–')+'</b><span>'+label+'</span></div>';};
     const node=(x,y,color,icon,label,value,entity,subtitle="")=>'<g class="node" data-e="'+this.esc(entity||"")+'" tabindex="0"><circle cx="'+x+'" cy="'+y+'" r="49" stroke="'+color+'"/><text x="'+x+'" y="'+(y-15)+'" class="node-icon">'+icon+'</text><text x="'+x+'" y="'+(y+11)+'" class="node-value">'+this.esc(value)+'</text><text x="'+x+'" y="'+(y+69)+'" class="node-label">'+label+'</text>'+(subtitle?'<text x="'+x+'" y="'+(y+30)+'" class="node-sub">'+this.esc(subtitle)+'</text>':"")+'</g>';
     this.shadowRoot.innerHTML='<style>'+this.css()+'</style>'+
     '<ha-card><div class="head"><span>▣ &nbsp;'+this.esc(c.title||"Energiefluss")+'</span><span class="live">● Live</span></div>'+
-    '<svg class="flow" viewBox="0 0 720 415" role="img" aria-label="Zwei getrennte Stromkreise. Oben Hausstrom mit PV und Wallbox, unten separater Wärmepumpenzähler.">'+
-    '<g class="routes"><path class="route purple" d="M130 115 C225 115 236 85 305 85"/><path class="route amber" d="M403 85 Q460 154 550 154"/><path class="route blue" d="M130 154 H550"/><path class="route green" d="M605 102 V154"/><path class="route wp" d="M130 325 H320"/><circle class="flowdot" r="4" fill="#b879ef"><animateMotion dur="4s" repeatCount="indefinite" path="M130 115 C225 115 236 85 305 85"/></circle><circle class="flowdot" r="4" fill="#2196ed"><animateMotion dur="3s" repeatCount="indefinite" path="M130 154 H550"/></circle><circle class="flowdot" r="4" fill="#b879ef"><animateMotion dur="4s" repeatCount="indefinite" path="M130 325 H320"/></circle></g>'+
-    node(80,115,"#249bf5","⚡","Netz Haus",grid===null?"–":(grid<0?"↗ ":"↘ ")+this.fmt(Math.abs(grid)),h.grid)+
-    node(355,85,"#f6a20a","☀","PV-Produktion",this.fmt(solar),h.solar)+
-    node(605,154,"#f6a20a","⌂","Haus",this.fmt(hv),h.total||"")+
-    node(605,45,"#27af58","▣","Auto",this.fmt(ev),e.power,soc===null?"":Math.round(soc)+" %")+
-    node(80,325,"#299bf5","⚡","Netz WP",this.fmt(hp),wp.power)+
-    node(370,325,"#a977e4","✺","Wärmepumpe",this.fmt(hp),wp.power)+
+    '<svg class="flow" viewBox="0 0 720 465" role="img" aria-label="Zwei getrennte Stromkreise. Oben Hausstrom mit PV und Wallbox, unten separater Wärmepumpenzähler.">'+
+    '<g class="routes"><path class="route purple" d="M126 154 C212 154 251 91 302 91"/><path class="route amber" d="M394 110 C458 110 474 188 557 188"/><path class="route blue" d="M128 196 C257 226 429 226 560 207"/><path class="route green" d="M610 113 V133"/><path class="route wp" d="M128 367 H309"/>'+
+    '<circle class="flowdot" r="4" fill="#b879ef"><animateMotion dur="4s" repeatCount="indefinite" path="M126 154 C212 154 251 91 302 91"/></circle><circle class="flowdot" r="4" fill="#2196ed"><animateMotion dur="3s" repeatCount="indefinite" path="M128 196 C257 226 429 226 560 207"/></circle><circle class="flowdot" r="4" fill="#b879ef"><animateMotion dur="4s" repeatCount="indefinite" path="M128 367 H309"/></circle></g>'+
+    node(78,163,"#249bf5","⚡","Netz Haus",grid===null?"–":(grid<0?"↗ ":"↘ ")+this.fmt(Math.abs(grid)),h.grid)+
+    node(350,75,"#f6a20a","☀","PV-Produktion",this.fmt(solar),h.solar)+
+    node(610,183,"#f6a20a","⌂","Haus",this.fmt(hv),h.total||"")+
+    node(610,60,"#27af58","▣","Auto",this.fmt(ev),e.power,soc===null?"":Math.round(soc)+" %")+
+    node(78,367,"#299bf5","⚡","Netz WP",this.fmt(hp),wp.power)+
+    node(358,367,"#a977e4","✺","Wärmepumpe",this.fmt(hp),wp.power)+
     '</svg>'+
     '<div class="meters"><section class="panel"><h3>⌂ &nbsp; Hausstromzähler <small>(inkl. Wallbox)</small></h3><div class="metric"><span>Leistung <b>'+this.fmt(hv)+'</b></span><span>Zählerstand <b>'+this.fmtKwh(this.kwh(h.meter_reading))+'</b></span></div><div class="stack"><i style="width:'+pHouse+'%;background:#349ce9"></i><i style="width:'+pEv+'%;background:#23985c"></i></div><div class="consumer"><span>⌂ Haus ohne Wallbox</span><strong>'+this.fmt(base)+'</strong></div><div class="consumer"><span>▣ Wallbox</span><strong>'+this.fmt(ev)+'</strong></div>'+consumerRows+'</section>'+
-    '<section class="panel"><h3>✺ &nbsp; Wärmepumpenzähler</h3><div class="metric"><span>Leistung <b>'+this.fmt(hp)+'</b></span><span>Zählerstand <b>'+this.fmtKwh(this.kwh(wp.meter_reading))+'</b></span></div><div class="stack"><i style="width:100%;background:#a977e4"></i></div><div class="consumer"><span>✺ Wärmepumpe</span><strong>'+this.fmt(hp)+'</strong></div><p class="note">Separater Stromkreis · keine PV-Zuordnung</p></section></div>'+
-    '<div class="balance panel"><h3>☀ &nbsp; PV & Bilanz <small>Hausstromkreis</small></h3><div class="kpis"><div>PV-Erzeugung<b>'+this.fmt(solar)+'</b></div><div>PV-Einspeisung<b>'+this.fmt(grid===null?null:Math.max(0,-grid))+'</b></div><div>Eigenverbrauchsquote<b>'+(own===null?"–":own+" %")+'</b></div><div>Autarkiegrad<b>'+(autarky===null?"–":autarky+" %")+'</b></div></div></div></ha-card>';
+    '<section class="panel"><h3>✺ &nbsp; Wärmepumpenzähler</h3><div class="metric"><span>Leistung <b>'+this.fmt(hp)+'</b></span><span>Zählerstand <b>'+this.fmtKwh(this.kwh(wp.meter_reading))+'</b></span></div><div class="stack"><i style="width:100%;background:#a977e4"></i></div><div class="consumer"><span>✺ Wärmepumpe</span><strong>'+this.fmt(hp)+'</strong></div><div class="wp-facts"><div><span>Netz WP</span><strong>' +this.fmt(hp)+ '</strong></div><div><span>PV-Anteil</span><strong>Keiner</strong></div><div><span>Versorgung</span><strong>Separater Netzanschluss</strong></div></div></section></div>'+
+    '<div class="balance panel"><h3>☀ &nbsp; PV & Bilanz <small>Hausstromkreis</small></h3><div class="kpis"><div class="kpi">PV-Erzeugung<b>'+this.fmt(solar)+'</b></div><div class="kpi">PV-Einspeisung<b>'+this.fmt(grid===null?null:Math.max(0,-grid))+'</b></div>'+gauge("Eigenverbrauchsquote",own,"#f2b824")+gauge("Autarkiegrad",autarky,"#47c97d")+'</div></div></ha-card>';
     this.shadowRoot.querySelectorAll("[data-e]").forEach(el=>{let id=el.getAttribute("data-e");if(id){el.addEventListener("click",()=>this.click(id));el.addEventListener("keydown",ev=>{if(ev.key==="Enter")this.click(id);});}});
   }
   css(){return `
     :host{display:block} *{box-sizing:border-box}
     ha-card{background:var(--ha-card-background,rgba(36,39,58,.72));border:1px solid rgba(202,211,245,.12);border-radius:22px;padding:15px;color:var(--primary-text-color,#fff);box-shadow:none;overflow:hidden}
     .head{display:flex;justify-content:space-between;align-items:center;font-size:19px;font-weight:650;margin:0 2px 4px}
-    .live{font-size:11px;font-weight:500;color:#31c47a}
+    .live{font-size:13px;font-weight:500;color:#31c47a}
     .flow{display:block;width:100%;height:auto;max-height:440px;overflow:visible}
     .route{fill:none;stroke-width:2;stroke-linecap:round}.purple,.wp{stroke:#aa70dc}.amber{stroke:#ef9c0f}.blue{stroke:#278fe5}.green{stroke:#27a851}
     .node{cursor:pointer}.node circle{fill:var(--card-background-color,#20232d);stroke-width:3}.node text{text-anchor:middle;fill:var(--primary-text-color,#fff)}
-    .node-icon{font-size:27px}.node-value{font-size:15px;font-weight:700}.node-label{font-size:12px}.node-sub{font-size:11px;fill:#c0c6d2!important}
+    .node-icon{font-size:30px}.node-value{font-size:19px;font-weight:700}.node-label{font-size:16px}.node-sub{font-size:13px;fill:#c0c6d2!important}
     .meters{display:grid;grid-template-columns:1fr 1fr;gap:12px}.panel{border:1px solid rgba(202,211,245,.12);border-radius:17px;padding:15px;background:rgba(15,20,35,.16);min-width:0}
-    h3{font-size:15px;font-weight:600;margin:0 0 13px}h3 small{font-weight:400;color:var(--secondary-text-color,#aab2c3)}
-    .metric{display:flex;justify-content:space-between;gap:12px;color:var(--secondary-text-color,#aab2c3);font-size:12px}.metric span:last-child{text-align:right}.metric b{display:block;color:var(--primary-text-color,#fff);font-size:17px;margin-top:4px}
+    h3{font-size:17px;font-weight:600;margin:0 0 13px}h3 small{font-weight:400;color:var(--secondary-text-color,#aab2c3)}
+    .metric{display:flex;justify-content:space-between;gap:12px;color:var(--secondary-text-color,#aab2c3);font-size:14px}.metric span:last-child{text-align:right}.metric b{display:block;color:var(--primary-text-color,#fff);font-size:19px;margin-top:4px}
     .stack{height:9px;border-radius:10px;background:#343b4a;display:flex;overflow:hidden;margin:15px 0}
-    .consumer{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:13px}.consumer strong{margin-left:auto;font-weight:600}.dot{width:8px;height:8px;border-radius:50%;flex:none}
+    .consumer{display:flex;align-items:center;gap:9px;padding:8px 0;font-size:15px}.consumer strong{margin-left:auto;font-weight:600}.dot{width:8px;height:8px;border-radius:50%;flex:none}
     .note{font-size:11px;color:var(--secondary-text-color,#aab2c3);margin:14px 0 0}
-    .balance{margin-top:12px}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.kpis>div{font-size:12px;color:var(--secondary-text-color,#aab2c3)}.kpis b{display:block;font-size:17px;color:var(--primary-text-color,#fff);margin-top:5px}
-    @media(max-width:560px){ha-card{padding:10px}.meters{grid-template-columns:1fr}.head{font-size:17px}.kpis{grid-template-columns:repeat(2,1fr)}.node-label{font-size:12px}}
+    .balance{margin-top:12px}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:center}.kpis>div{font-size:14px;color:var(--secondary-text-color,#aab2c3)}.kpis b{display:block;font-size:19px;color:var(--primary-text-color,#fff);margin-top:5px}
+    .gauge{display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;min-width:0}.gauge svg{width:100%;max-width:125px;display:block}.gauge b{margin-top:-25px;margin-bottom:5px}.gauge span{font-size:13px;color:var(--secondary-text-color,#aab2c3)}
+    .wp-facts{border-top:1px solid rgba(202,211,245,.1);margin-top:18px;padding-top:10px}.wp-facts>div{display:flex;gap:10px;justify-content:space-between;padding:7px 0;font-size:13px}.wp-facts span{color:var(--secondary-text-color,#aab2c3)}.wp-facts strong{text-align:right}
+    @media(max-width:560px){ha-card{padding:10px}.meters{grid-template-columns:1fr}.head{font-size:17px}.kpis{grid-template-columns:repeat(2,1fr)}.node-label{font-size:16px}}
     @media(prefers-reduced-motion:reduce){.flowdot{display:none}}
   `;}
 }
