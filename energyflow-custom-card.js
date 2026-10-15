@@ -183,8 +183,8 @@ class EnergyFlowCustomCard extends HTMLElement {
       }
       b.R = R;
       if (c.hasBat) {   // battery hangs below the grid-home line, joined by a short vertical branch
-        b.xBat = c.hasSolar ? xC : Math.round((xL + xC) / 2);
-        b.yBat = b.yMid + Math.round(R * (c.hasSolar ? 2.3 : 2.9));   // without PV the home label sits next to the branch
+        b.xBat = c.hasSolar || !c.hasDev ? xC : Math.round((xL + xC) / 2);
+        b.yBat = b.yMid + Math.round(R * (c.hasSolar || !c.hasDev ? 2.3 : 2.9));   // with PV-less device row the home label sits next to the branch
         b.bottom = b.yBat + R + 28;
       }
       L.blocks.push(b);
@@ -222,11 +222,12 @@ class EnergyFlowCustomCard extends HTMLElement {
         if (c.hasDev) nodes.push({x: xR, y: yTop, pos: "above", name: c.device.name, value: this.fmt(c.devW), icon: c.device.icon, color: c.device.color, entity: c.device.entity, extra: c.devSoc === null ? "" : Math.round(c.devSoc) + " %"});
       } else {
         const flow = c.gridW !== null ? c.gridW : c.homeW;
-        wires.push({...line(xL + R, yMid, xC - R, yMid), color: c.home.color, active: flow !== null && flow > MIN});
+        const hx = c.hasDev ? xC : xR;   // without device the home circle sits on the right, in line with circuits that have PV
+        wires.push({...line(xL + R, yMid, hx - R, yMid), color: c.home.color, active: flow !== null && flow > MIN});
         if (c.hasDev) wires.push({...line(xC + R, yMid, xR - R, yMid), color: c.device.color, active: c.devW !== null && c.devW > MIN});
         this._battery(c, b, wires, nodes, line, MIN);
         nodes.push({x: xL, y: yMid, pos: "below", name: c.grid.name, value: fmtAbs(c.gridW), icon: c.grid.icon, color: c.grid.color, entity: c.grid.entity});
-        nodes.push({x: xC, y: yMid, pos: "below", name: c.home.name, value: this.fmt(c.homeW), icon: c.home.icon, color: c.home.color, entity: c.home.entity});
+        nodes.push({x: hx, y: yMid, pos: "below", name: c.home.name, value: this.fmt(c.homeW), icon: c.home.icon, color: c.home.color, entity: c.home.entity});
         if (c.hasDev) nodes.push({x: xR, y: yMid, pos: "below", name: c.device.name, value: this.fmt(c.devW), icon: c.device.icon, color: c.device.color, entity: c.device.entity, extra: c.devSoc === null ? "" : Math.round(c.devSoc) + " %"});
       }
     });
