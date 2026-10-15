@@ -24,7 +24,7 @@ Ein Stromkreis **ohne PV** wird als einfache Reihe *Netz → Haus → Gerät* ge
 
 ### Bereiche unter dem Diagramm
 - **Stromkreis-Bereich:** Titel, Icon, Farbe, Anzeige von Leistung/Zählerstand, Verteilungsbalken und beliebig viele **Zeilen**.
-  Jede Zeile hat eine Quelle: *eigener Sensor*, *Haus-Gesamt*, *Gerät*, *Batterie* oder *Rest (Haus minus Gerät)*, dazu optional Status-Sensor und Energie-Sensor (kWh gesamt).
+  Jede Zeile hat eine Quelle: *eigener Sensor*, *Haus-Gesamt*, *Gerät*, *Batterie* oder *Rest (Haus minus Gerät)*.
 - **PV & Bilanz:** PV-Produktion, Einspeisung, Eigenverbrauchsquote, Autarkiegrad (jeweils ein-/ausblendbar).
 
 ## Beispiel (YAML)
@@ -73,12 +73,7 @@ panels:
     icon: mdi:heat-pump
     color: red
     show_bar: false
-    rows:
-      - source: entity
-        name: Kompressor
-        icon: mdi:heat-pump
-        status_entity: sensor.heatpump_compressor_status
-        energy_entity: sensor.heatpump_compressor_energy_total
+    rows: []
   - type: balance
     circuit: 0
     title: PV & Bilanz

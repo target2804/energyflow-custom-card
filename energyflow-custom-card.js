@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.10.2
+/* EnergyFlow Custom Card — v0.10.3
  * Modular energy flow card: any number of electrically separate circuits
  * (each with its own grid meter, optional PV, a "home" node and an optional device),
  * plus freely configurable detail panels. Visual editor included.
@@ -11,7 +11,7 @@
  * (e.g. "layout", "preview", "hass"), they would be shadowed.
  */
 
-const EF_VERSION = "0.10.2";
+const EF_VERSION = "0.10.3";
 const EF_TYPE = "custom:energyflow-custom-card";
 const EF_EXPORT_COLOR = "#a66add";
 const EF_PALETTE = {orange:"#e9a219",yellow:"#f0ba27",blue:"#329af0",violet:"#b184e5",green:"#24a85a",teal:"#23a9aa",red:"#e0556b",grey:"#8b92a5"};
@@ -59,13 +59,7 @@ function efMigrateLegacy(cfg) {
     {type: "circuit", circuit: 0, title: "Hausstrom", icon: "mdi:home-lightning-bolt", color: "orange", rows: [
       {source: "remainder", name: "Hausverbrauch", icon: "mdi:home", color: "#349ce9", in_bar: true},
       {source: "device", name: "Wallbox", icon: "mdi:car", color: "#23985c", in_bar: true}, ...consumers]},
-    {type: "circuit", circuit: 1, title: "Wärmestrom", icon: "mdi:heat-pump", color: "red", show_bar: false, rows: [
-      clean({source: "entity", entity: wp.compressor_power, name: "Kompressor", icon: "mdi:heat-pump", color: "red",
-        status_entity: wp.compressor_status,
-        energy_entity: wp.compressor_energy}),
-      clean({source: "entity", entity: wp.heater_power, name: "Heizstab", icon: "mdi:radiator", color: "red",
-        status_entity: wp.heater_status,
-        energy_entity: wp.heater_energy})]},
+    {type: "circuit", circuit: 1, title: "Wärmestrom", icon: "mdi:heat-pump", color: "red", show_bar: false, rows: []},
     {type: "balance", circuit: 0, title: "PV & Bilanz", icon: "mdi:solar-power"}
   ];
   return {type: cfg.type || EF_TYPE, circuits, panels};
@@ -330,12 +324,6 @@ class EnergyFlowCustomCard extends HTMLElement {
     return out.join("");
   }
 
-  _statusLabel(id) {
-    const raw = this.state(id)?.state;
-    if (!raw || ["unknown", "unavailable"].includes(raw)) return "–";
-    return ({off: "Aus", on: "An", heating: "Heizen", cooling: "Kühlen", dhw: "Warmwasser", defrost: "Abtauen", alarm: "Störung", pool: "Pool", pool_heat: "Pool heizen"}[raw] || raw);
-  }
-
   _rowData(r, c) {
     const src = r.source || "entity";
     let power = null, showPower = true, entity = r.entity || "", name = r.name, icon = r.icon, def = "mdi:flash";
@@ -345,8 +333,7 @@ class EnergyFlowCustomCard extends HTMLElement {
     else if (src === "remainder") { power = c.homeW !== null ? Math.max(0, c.homeW - (c.devW || 0)) : null; name = name || "Verbrauch"; def = "mdi:home"; }
     else { power = r.entity ? this.watts(r.entity) : null; showPower = !!r.entity; name = name || this.state(r.entity)?.attributes?.friendly_name || r.entity || "Zeile"; }
     const inBar = r.in_bar !== undefined ? !!r.in_bar : (src === "remainder" || src === "device");
-    return {src, power, showPower, entity, name, icon: icon || def, color: efColor(r.color, "violet"), inBar,
-      status: r.status_entity, energy: r.energy_entity};
+    return {src, power, showPower, entity, name, icon: icon || def, color: efColor(r.color, "violet"), inBar};
   }
 
   _circuitPanelHtml(p, c) {
@@ -362,9 +349,7 @@ class EnergyFlowCustomCard extends HTMLElement {
       if (segs) html += '<div class="stack">' + segs + "</div>";
     }
     html += rows.map(r => {
-      const status = r.status ? ' <em>' + this.esc(this._statusLabel(r.status)) + '</em>' : "";
-      const vals = (r.showPower ? "<strong>" + this.fmt(r.power) + "</strong>" : "") + (r.energy ? "<strong>" + this.fmtKwh(this.kwh(r.energy)) + "</strong>" : "");
-      return '<div class="consumer" data-e="' + this.esc(r.status || r.entity || r.energy) + '">' + this.ico(r.icon, r.color) + "<span>" + this.esc(r.name) + status + "</span>" + (vals ? '<div class="vals">' + vals + "</div>" : "") + "</div>";
+      return '<div class="consumer" data-e="' + this.esc(r.entity) + '">' + this.ico(r.icon, r.color) + "<span>" + this.esc(r.name) + "</span>" + (r.showPower ? "<strong>" + this.fmt(r.power) + "</strong>" : "") + "</div>";
     }).join("");
     return html + "</section>";
   }
@@ -414,7 +399,7 @@ class EnergyFlowCustomCard extends HTMLElement {
     .stack{height:9px;background:#343b4a;border-radius:10px;display:flex;overflow:hidden;margin:14px 0 10px}
     .consumer{display:flex;align-items:center;gap:6px;font-size:12px;padding:7px 0}
     .consumer ha-icon{--mdc-icon-size:20px!important}
-    .consumer span{min-width:0;flex:1}.consumer strong{margin-left:auto;text-align:right;white-space:nowrap;font-size:12px}.consumer .vals strong{margin-left:0}
+    .consumer span{min-width:0;flex:1}.consumer strong{margin-left:auto;text-align:right;white-space:nowrap;font-size:12px}
     .balance h3{margin-bottom:14px}.balance .hint{margin:0 0 0 auto;font-weight:400}
     .kpi-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px 16px;margin-bottom:16px}
     .kpi{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--secondary-text-color,#abb2c0)}
@@ -427,8 +412,6 @@ class EnergyFlowCustomCard extends HTMLElement {
     .gauge strong{font-size:20px;position:relative;margin-top:-30px;z-index:1}
     .gauge span{font-size:13px;color:var(--secondary-text-color,#abb2c0);margin-top:8px;line-height:1.3;overflow-wrap:normal;hyphens:auto}
     .metric+.consumer{margin-top:8px}
-    .consumer em{font-style:normal;font-size:11px;color:var(--secondary-text-color,#abb2c0);margin-left:6px}
-    .consumer .vals{display:flex;gap:10px;margin-left:auto;white-space:nowrap}
     @media(max-width:460px){ha-card{padding:11px}.panel{padding:13px}}
     @media(prefers-reduced-motion:reduce){.flow-wires circle{display:none}}
   `; }
@@ -455,7 +438,7 @@ const EF_LABELS = {
   base_decimals: "Nachkommastellen (W)", kilo_decimals: "Nachkommastellen (kW)", kilo_threshold: "Umschaltung auf kW ab (W)",
   clickable_entities: "Klick öffnet Sensor-Dialog", panels_side_by_side: "Bereiche nebeneinander", disable_dots: "Bewegte Punkte ausschalten", no_labels: "Beschriftungen ausblenden",
   title: "Titel", hint: "Zusatztext (rechts)", type: "Typ", circuit: "Stromkreis", show_meter: "Leistung & Zählerstand", show_bar: "Verteilungsbalken",
-  source: "Wert", status_entity: "Status-Sensor", energy_entity: "Energie gesamt (kWh-Sensor)", in_bar: "Im Verteilungsbalken",
+  source: "Wert", in_bar: "Im Verteilungsbalken",
   show_pv: "PV-Produktion", show_feed_in: "PV-Einspeisung", show_own: "Eigenverbrauchsquote", show_autarky: "Autarkiegrad"
 };
 const EF_ENTITY_HELPER = "Optional: leer lassen, wenn der Wert nicht angezeigt oder berechnet werden soll.";
@@ -586,7 +569,7 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
       panelBalance: [two(bool("show_pv"), bool("show_feed_in")), two(bool("show_own"), bool("show_autarky"))],
       row: [
         {name: "source", selector: {select: {mode: "dropdown", options: [{value: "entity", label: "Eigener Sensor"}, {value: "home", label: "Haus-Gesamt des Stromkreises"}, {value: "device", label: "Gerät des Stromkreises"}, {value: "battery", label: "Batterie des Stromkreises"}, {value: "remainder", label: "Rest (Haus minus Gerät)"}]}}},
-        ent("entity"), two(text("name"), icon), two(color, bool("in_bar")), ent("status_entity"), ent("energy_entity")
+        ent("entity"), two(text("name"), icon), two(color, bool("in_bar"))
       ]
     };
   }
