@@ -50,7 +50,7 @@ class EnergyFlowCustomCard extends HTMLElement {
     '<div class="balance panel"><h3>☀ &nbsp; PV & Bilanz <small>Hausstromkreis</small></h3><div class="kpis"><div>PV-Erzeugung<b>'+this.fmt(solar)+'</b></div><div>PV-Einspeisung<b>'+this.fmt(grid===null?null:Math.max(0,-grid))+'</b></div><div>Eigenverbrauchsquote<b>'+(own===null?"–":own+" %")+'</b></div><div>Autarkiegrad<b>'+(autarky===null?"–":autarky+" %")+'</b></div></div></div></ha-card>';
     this.shadowRoot.querySelectorAll("[data-e]").forEach(el=>{let id=el.getAttribute("data-e");if(id){el.addEventListener("click",()=>this.click(id));el.addEventListener("keydown",ev=>{if(ev.key==="Enter")this.click(id);});}});
   }
-  css(){return \`
+  css(){return `
     :host{display:block} *{box-sizing:border-box}
     ha-card{background:var(--ha-card-background,rgba(36,39,58,.72));border:1px solid rgba(202,211,245,.12);border-radius:22px;padding:15px;color:var(--primary-text-color,#fff);box-shadow:none;overflow:hidden}
     .head{display:flex;justify-content:space-between;align-items:center;font-size:19px;font-weight:650;margin:0 2px 4px}
@@ -68,7 +68,7 @@ class EnergyFlowCustomCard extends HTMLElement {
     .balance{margin-top:12px}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.kpis>div{font-size:12px;color:var(--secondary-text-color,#aab2c3)}.kpis b{display:block;font-size:17px;color:var(--primary-text-color,#fff);margin-top:5px}
     @media(max-width:560px){ha-card{padding:10px}.meters{grid-template-columns:1fr}.head{font-size:17px}.kpis{grid-template-columns:repeat(2,1fr)}.node-label{font-size:12px}}
     @media(prefers-reduced-motion:reduce){.flowdot{display:none}}
-  \`;}
+  `;}
 }
 if(!customElements.get("energyflow-custom-card"))customElements.define("energyflow-custom-card",EnergyFlowCustomCard);
 window.customCards=window.customCards||[];
