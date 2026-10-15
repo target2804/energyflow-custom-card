@@ -14,7 +14,7 @@ Jeder Stromkreis besteht aus:
 
 | Knoten | Pflicht | Inhalt |
 |---|---|---|
-| **Netz** | ja | Leistungssensor (positiv = Bezug, negativ = Einspeisung), Name, Icon, Farbe, Zählerstand (kWh), optional Vorzeichen umkehren. Anzeige wie bei der Power Flow Card Plus: ↑ Einspeisung (violett) und ↓ Bezug (Netzfarbe) immer beide sichtbar; `display_state`: `two_way` (Standard), `one_way` (nur Bezug), `one_way_reverse` (nur Einspeisung) |
+| **Netz** | ja | Leistungssensor (positiv = Bezug, negativ = Einspeisung), Name, Icon, Farbe, Zählerstand (kWh), optional Vorzeichen umkehren. Anzeige wie bei der Power Flow Card Plus: ← Einspeisung (violett) und → Bezug (Netzfarbe) immer beide sichtbar; `display_state`: `two_way` (Standard), `one_way` (nur Bezug), `one_way_reverse` (nur Einspeisung) |
 | **PV-Anlage** | nein | Leistungssensor, Name, Icon, Farbe. Mit PV entsteht das Dreieck PV – Netz – Haus, inklusive Einspeise-Leitung |
 | **Haus / Verbraucher** | ja | Leistungssensor (leer = wird aus PV + Netz berechnet), Name, Icon, Farbe |
 | **Gerät** | nein | z. B. Auto/Wallbox: Leistungssensor, Name, Icon, Farbe, Ladestand (%) |
@@ -56,7 +56,7 @@ circuits:
     home:
       name: Wärmepumpe
       icon: mdi:heat-pump
-      color: violet
+      color: red
 panels:
   - type: circuit
     circuit: 0
@@ -71,7 +71,7 @@ panels:
     circuit: 1
     title: Wärmestrom
     icon: mdi:heat-pump
-    color: violet
+    color: red
     show_bar: false
     rows:
       - source: entity

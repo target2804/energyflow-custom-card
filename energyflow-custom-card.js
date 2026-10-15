@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.9.1
+/* EnergyFlow Custom Card — v0.9.2
  * Modular energy flow card: any number of electrically separate circuits
  * (each with its own grid meter, optional PV, a "home" node and an optional device),
  * plus freely configurable detail panels. Visual editor included.
@@ -11,7 +11,7 @@
  * (e.g. "layout", "preview", "hass"), they would be shadowed.
  */
 
-const EF_VERSION = "0.9.1";
+const EF_VERSION = "0.9.2";
 const EF_TYPE = "custom:energyflow-custom-card";
 const EF_EXPORT_COLOR = "#a66add";
 const EF_PALETTE = {orange:"#e9a219",yellow:"#f0ba27",blue:"#329af0",violet:"#b184e5",green:"#24a85a",teal:"#23a9aa",red:"#e0556b",grey:"#8b92a5"};
@@ -49,7 +49,7 @@ function efMigrateLegacy(cfg) {
   }, {
     name: "Wärmestrom",
     grid: clean({entity: wp.power, name: "Netz WP", meter_reading: wp.meter_reading}),
-    home: clean({entity: wp.power, name: "Wärmepumpe", icon: "mdi:heat-pump", color: "violet"})
+    home: clean({entity: wp.power, name: "Wärmepumpe", icon: "mdi:heat-pump", color: "red"})
   }];
   const consumers = (Array.isArray(cfg.consumers) ? cfg.consumers : []).map(x => clean({
     source: "entity", entity: x.entity, name: x.name || x.entity, icon: x.icon || "mdi:flash",
@@ -59,11 +59,11 @@ function efMigrateLegacy(cfg) {
     {type: "circuit", circuit: 0, title: "Hausstrom", icon: "mdi:home-lightning-bolt", color: "orange", rows: [
       {source: "remainder", name: "Hausverbrauch", icon: "mdi:home", color: "#349ce9", in_bar: true},
       {source: "device", name: "Wallbox", icon: "mdi:car", color: "#23985c", in_bar: true}, ...consumers]},
-    {type: "circuit", circuit: 1, title: "Wärmestrom", icon: "mdi:heat-pump", color: "violet", show_bar: false, rows: [
-      clean({source: "entity", entity: wp.compressor_power, name: "Kompressor", icon: "mdi:heat-pump", color: "violet",
+    {type: "circuit", circuit: 1, title: "Wärmestrom", icon: "mdi:heat-pump", color: "red", show_bar: false, rows: [
+      clean({source: "entity", entity: wp.compressor_power, name: "Kompressor", icon: "mdi:heat-pump", color: "red",
         status_entity: wp.compressor_status,
         energy_entity: wp.compressor_energy}),
-      clean({source: "entity", entity: wp.heater_power, name: "Heizstab", icon: "mdi:radiator", color: "violet",
+      clean({source: "entity", entity: wp.heater_power, name: "Heizstab", icon: "mdi:radiator", color: "red",
         status_entity: wp.heater_status,
         energy_entity: wp.heater_energy})]},
     {type: "balance", circuit: 0, title: "PV & Bilanz", icon: "mdi:solar-power", hint: "Hausstromkreis"}
@@ -209,7 +209,7 @@ class EnergyFlowCustomCard extends HTMLElement {
     /* like Power Flow Card Plus "two_way": both directions are always shown, each in its own colour */
     const gridLines = c => {
       const mode = c.grid.display_state, w = c.gridW;
-      const out = [], imp = {text: "↓ " + this.fmt(w === null ? null : Math.max(0, w)), color: c.grid.color}, exp = {text: "↑ " + this.fmt(w === null ? null : Math.max(0, -w)), color: EF_EXPORT_COLOR};
+      const out = [], imp = {text: "→ " + this.fmt(w === null ? null : Math.max(0, w)), color: c.grid.color}, exp = {text: "← " + this.fmt(w === null ? null : Math.max(0, -w)), color: EF_EXPORT_COLOR};
       if (mode === "one_way") return [imp];
       if (mode === "one_way_reverse") return [exp];
       return [exp, imp];
@@ -578,7 +578,7 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
       circuit: [text("name")],
       title: [text("title")],
       advanced: [two(num("base_decimals"), num("kilo_decimals")), num("kilo_threshold"), two(bool("clickable_entities"), bool("disable_dots")), bool("no_labels")],
-      grid: [ent("entity"), two(text("name"), icon), two(color, ent("meter_reading")), {name: "display_state", selector: {select: {mode: "dropdown", options: [{value: "two_way", label: "Beide Richtungen (↑ Einspeisung, ↓ Bezug)"}, {value: "one_way", label: "Nur Bezug (↓)"}, {value: "one_way_reverse", label: "Nur Einspeisung (↑)"}]}}}, bool("invert")],
+      grid: [ent("entity"), two(text("name"), icon), two(color, ent("meter_reading")), {name: "display_state", selector: {select: {mode: "dropdown", options: [{value: "two_way", label: "Beide Richtungen (← Einspeisung, → Bezug)"}, {value: "one_way", label: "Nur Bezug (→)"}, {value: "one_way_reverse", label: "Nur Einspeisung (←)"}]}}}, bool("invert")],
       solar: [bool("enabled"), ent("entity"), two(text("name"), icon), color],
       home: [ent("entity"), two(text("name"), icon), color],
       device: [bool("enabled"), ent("entity"), two(text("name"), icon), two(color, ent("soc"))],
