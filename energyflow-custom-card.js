@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.10.3
+/* EnergyFlow Custom Card — v0.11.0
  * Modular energy flow card: any number of electrically separate circuits
  * (each with its own grid meter, optional PV, a "home" node and an optional device),
  * plus freely configurable detail panels. Visual editor included.
@@ -11,7 +11,7 @@
  * (e.g. "layout", "preview", "hass"), they would be shadowed.
  */
 
-const EF_VERSION = "0.10.3";
+const EF_VERSION = "0.11.0";
 const EF_TYPE = "custom:energyflow-custom-card";
 const EF_EXPORT_COLOR = "#a66add";
 const EF_PALETTE = {orange:"#e9a219",yellow:"#f0ba27",blue:"#329af0",violet:"#b184e5",green:"#24a85a",teal:"#23a9aa",red:"#e0556b",grey:"#8b92a5"};
@@ -59,8 +59,7 @@ function efMigrateLegacy(cfg) {
     {type: "circuit", circuit: 0, title: "Hausstrom", icon: "mdi:home-lightning-bolt", color: "orange", rows: [
       {source: "remainder", name: "Hausverbrauch", icon: "mdi:home", color: "#349ce9", in_bar: true},
       {source: "device", name: "Wallbox", icon: "mdi:car", color: "#23985c", in_bar: true}, ...consumers]},
-    {type: "circuit", circuit: 1, title: "Wärmestrom", icon: "mdi:heat-pump", color: "red", show_bar: false, rows: []},
-    {type: "balance", circuit: 0, title: "PV & Bilanz", icon: "mdi:solar-power"}
+    {type: "circuit", circuit: 1, title: "Wärmestrom", icon: "mdi:heat-pump", color: "red", show_bar: false, rows: []}
   ];
   return {type: cfg.type || EF_TYPE, circuits, panels};
 }
@@ -70,8 +69,7 @@ function efDefaultConfig() {
     type: EF_TYPE,
     circuits: [{name: "Hausstrom", grid: {name: "Netz"}, solar: {enabled: true, name: "PV-Produktion"}, home: {name: "Haus"}, device: {enabled: false, name: "Auto"}}],
     panels: [
-      {type: "circuit", circuit: 0, title: "Hausstrom", icon: "mdi:home-lightning-bolt", color: "orange", rows: [{source: "remainder", name: "Hausverbrauch", icon: "mdi:home", color: "blue", in_bar: true}]},
-      {type: "balance", circuit: 0, title: "PV & Bilanz", icon: "mdi:solar-power"}
+      {type: "circuit", circuit: 0, title: "Hausstrom", icon: "mdi:home-lightning-bolt", color: "orange", rows: [{source: "remainder", name: "Hausverbrauch", icon: "mdi:home", color: "blue", in_bar: true}]}
     ]
   };
 }
@@ -143,10 +141,8 @@ class EnergyFlowCustomCard extends HTMLElement {
     }
     const devW = hasDev ? this.watts(d.entity) : null;
     const pvUse = hasSolar && solarW !== null && gridW !== null ? Math.max(0, solarW - Math.max(0, -gridW)) : null;
-    const own = solarW > 0 && pvUse !== null ? Math.min(100, Math.round(pvUse / solarW * 100)) : null;
-    const autarky = homeW > 0 && pvUse !== null ? Math.min(100, Math.round(pvUse / homeW * 100)) : null;
     return {
-      i, name: c.name || ("Stromkreis " + (i + 1)), hasSolar, hasDev, hasBat, batW, gridW, solarW, homeW, devW, pvUse, own, autarky,
+      i, name: c.name || ("Stromkreis " + (i + 1)), hasSolar, hasDev, hasBat, batW, gridW, solarW, homeW, devW, pvUse,
       devSoc: d.soc ? this.val(d.soc) : null,
       batSoc: bt.soc ? this.val(bt.soc) : null,
       grid: {entity: g.entity, display_state: g.display_state || "two_way", name: g.name || "Netz", icon: g.icon || "mdi:transmission-tower", color: efColor(g.color, "blue"), meter: g.meter_reading},
@@ -317,8 +313,8 @@ class EnergyFlowCustomCard extends HTMLElement {
     panels.forEach(p => {
       const c = cs[Number(p.circuit) || 0] || cs[0];
       if (!c) return;
-      if (p.type === "balance") { flush(); out.push(this._balanceHtml(p, c)); }
-      else pending.push(this._circuitPanelHtml(p, c));
+      if (p.type === "balance") return;   // removed in v0.11: use the Home Assistant energy dashboard instead
+      pending.push(this._circuitPanelHtml(p, c));
     });
     flush();
     return out.join("");
@@ -354,21 +350,6 @@ class EnergyFlowCustomCard extends HTMLElement {
     return html + "</section>";
   }
 
-  _balanceHtml(p, c) {
-    const gauge = (label, percent, color) => {
-      const good = Number.isFinite(percent), v = good ? Math.min(100, Math.max(0, percent)) : 0, dash = (v * 1.445).toFixed(1);
-      return '<div class="gauge"><svg class="gauge-svg" lang="de" viewBox="0 0 140 85" aria-label="' + this.esc(label) + '"><path d="M15 75 A55 55 0 0 1 125 75" class="gauge-track"/><path d="M15 75 A55 55 0 0 1 125 75" class="gauge-fill" style="stroke:' + color + ';stroke-dasharray:' + dash + ' 200"/></svg><strong>' + (good ? Math.round(percent) + " %" : "–") + "</strong><span>" + label + "</span></div>";
-    };
-    const kpi = (label, value) => '<div class="kpi"><span>' + label + "</span><strong>" + value + "</strong></div>";
-    const kpis = [], gauges = [];
-    if (p.show_pv !== false) kpis.push(kpi("PV-Produktion", this.fmt(c.solarW)));
-    if (p.show_feed_in !== false) kpis.push(kpi("PV-Einspeisung", this.fmt(c.gridW === null ? null : Math.max(0, -c.gridW))));
-    if (p.show_own !== false) gauges.push(gauge("Eigenverbrauchsquote", c.own, "#f0ba27"));
-    if (p.show_autarky !== false) gauges.push(gauge("Autarkiegrad", c.autarky, "#46c97d"));
-    return '<section class="panel balance"><h3>' + this.ico(p.icon || "mdi:solar-power", efColor(p.color, "orange")) + " " + this.esc(p.title || "PV & Bilanz") + (p.hint ? ' <span class="hint">' + this.esc(p.hint) + "</span>" : "") + "</h3>" +
-      (kpis.length ? '<div class="kpi-list">' + kpis.join("") + "</div>" : "") + (gauges.length ? '<div class="gauge-list">' + gauges.join("") + "</div>" : "") + "</section>";
-  }
-
   css() { return `
     :host{display:block}*{box-sizing:border-box}
     ha-card{display:block;background:rgba(36,39,58,.72);border:1px solid rgba(202,211,245,.10);border-radius:22px;padding:16px;color:var(--primary-text-color,#fff);box-shadow:none;overflow:hidden;font-family:var(--primary-font-family,Roboto,"Arial",sans-serif)}
@@ -393,25 +374,12 @@ class EnergyFlowCustomCard extends HTMLElement {
     .panel{border:1px solid rgba(202,211,245,.12);border-radius:17px;padding:12px;background:rgba(15,20,35,.16);min-width:0}
     h3{font-size:15px;line-height:1.35;font-weight:600;margin:0 0 5px;overflow-wrap:normal}
     h3 ha-icon,.consumer ha-icon{flex-shrink:0}
-    .hint{font-size:12px;color:var(--secondary-text-color,#abb2c0);margin:0 0 13px}
     .metric{display:flex;justify-content:space-between;text-align:left;gap:6px 14px;color:var(--secondary-text-color,#abb2c0);font-size:12px;flex-wrap:wrap}
     .metric strong{display:block;font-size:16px;color:var(--primary-text-color,#fff);margin-top:6px;white-space:nowrap}
     .stack{height:9px;background:#343b4a;border-radius:10px;display:flex;overflow:hidden;margin:14px 0 10px}
     .consumer{display:flex;align-items:center;gap:6px;font-size:12px;padding:7px 0}
     .consumer ha-icon{--mdc-icon-size:20px!important}
     .consumer span{min-width:0;flex:1}.consumer strong{margin-left:auto;text-align:right;white-space:nowrap;font-size:12px}
-    .balance h3{margin-bottom:14px}.balance .hint{margin:0 0 0 auto;font-weight:400}
-    .kpi-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px 16px;margin-bottom:16px}
-    .kpi{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--secondary-text-color,#abb2c0)}
-    .kpi strong{font-size:20px;font-weight:600;color:var(--primary-text-color,#fff)}
-    .gauge-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;justify-items:center}
-    .gauge{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0;width:100%;max-width:200px;position:relative}
-    .gauge-svg{display:block;width:100%;height:auto;overflow:visible}
-    .gauge-track,.gauge-fill{fill:none;stroke-width:14;stroke-linecap:butt}
-    .gauge-track{stroke:#353d4d}.gauge-fill{stroke-dashoffset:0}
-    .gauge strong{font-size:20px;position:relative;margin-top:-30px;z-index:1}
-    .gauge span{font-size:13px;color:var(--secondary-text-color,#abb2c0);margin-top:8px;line-height:1.3;overflow-wrap:normal;hyphens:auto}
-    .metric+.consumer{margin-top:8px}
     @media(max-width:460px){ha-card{padding:11px}.panel{padding:13px}}
     @media(prefers-reduced-motion:reduce){.flow-wires circle{display:none}}
   `; }
@@ -437,9 +405,8 @@ const EF_LABELS = {
   invert: "Vorzeichen umkehren", display_state: "Anzeige Bezug/Einspeisung", enabled: "Anzeigen", soc: "Ladestand (%-Sensor)",
   base_decimals: "Nachkommastellen (W)", kilo_decimals: "Nachkommastellen (kW)", kilo_threshold: "Umschaltung auf kW ab (W)",
   clickable_entities: "Klick öffnet Sensor-Dialog", panels_side_by_side: "Bereiche nebeneinander", disable_dots: "Bewegte Punkte ausschalten", no_labels: "Beschriftungen ausblenden",
-  title: "Titel", hint: "Zusatztext (rechts)", type: "Typ", circuit: "Stromkreis", show_meter: "Leistung & Zählerstand", show_bar: "Verteilungsbalken",
-  source: "Wert", in_bar: "Im Verteilungsbalken",
-  show_pv: "PV-Produktion", show_feed_in: "PV-Einspeisung", show_own: "Eigenverbrauchsquote", show_autarky: "Autarkiegrad"
+  title: "Titel", circuit: "Stromkreis", show_meter: "Leistung & Zählerstand", show_bar: "Verteilungsbalken",
+  source: "Wert", in_bar: "Im Verteilungsbalken"
 };
 const EF_ENTITY_HELPER = "Optional: leer lassen, wenn der Wert nicht angezeigt oder berechnet werden soll.";
 const EF_HELPERS = {
@@ -561,12 +528,10 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
       device: [bool("enabled"), ent("entity"), two(text("name"), icon), two(color, ent("soc"))],
       battery: [bool("enabled"), ent("entity"), two(text("name"), icon), two(color, ent("soc")), bool("invert")],
       panelCommon: circuitOptions => [
-        {name: "type", selector: {select: {mode: "dropdown", options: [{value: "circuit", label: "Stromkreis-Bereich (Zeilen)"}, {value: "balance", label: "PV & Bilanz"}]}}},
         {name: "circuit", selector: {select: {mode: "dropdown", options: circuitOptions.length ? circuitOptions : [{value: "0", label: "–"}]}}},
-        two(text("title"), icon), two(color, text("hint"))
+        two(text("title"), icon), color
       ],
       panelCircuit: [two(bool("show_meter"), bool("show_bar"))],
-      panelBalance: [two(bool("show_pv"), bool("show_feed_in")), two(bool("show_own"), bool("show_autarky"))],
       row: [
         {name: "source", selector: {select: {mode: "dropdown", options: [{value: "entity", label: "Eigener Sensor"}, {value: "home", label: "Haus-Gesamt des Stromkreises"}, {value: "device", label: "Gerät des Stromkreises"}, {value: "battery", label: "Batterie des Stromkreises"}, {value: "remainder", label: "Rest (Haus minus Gerät)"}]}}},
         ent("entity"), two(text("name"), icon), two(color, bool("in_bar"))
@@ -610,12 +575,11 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
     this._title(wrap, "Bereiche unter dem Diagramm");
     cfg.panels.forEach((p, i) => {
       const cn = (cfg.circuits[Number(p.circuit) || 0] || {}).name || "";
-      this._link(wrap, p.icon || (p.type === "balance" ? "mdi:solar-power" : "mdi:flash"), (i + 1) + ". " + (p.title || "ohne Titel"),
-        (p.type === "balance" ? "PV & Bilanz" : "Stromkreis-Bereich") + (cn ? " · " + cn : ""), () => this._go(["p", i]));
+      this._link(wrap, p.icon || "mdi:flash", (i + 1) + ". " + (p.title || "ohne Titel"),
+        "Stromkreis-Bereich" + (cn ? " · " + cn : ""), () => this._go(["p", i]));
     });
     const adds = this._el("div", "adds");
     adds.appendChild(this._btn("+ Stromkreis-Bereich", () => { cfg.panels.push({type: "circuit", circuit: 0, title: "Neuer Bereich", icon: "mdi:flash", color: "orange", rows: []}); this._structural(); }, "add"));
-    adds.appendChild(this._btn("+ Bilanz-Bereich", () => { cfg.panels.push({type: "balance", circuit: 0, title: "PV & Bilanz", icon: "mdi:solar-power"}); this._structural(); }, "add"));
     wrap.appendChild(adds);
     this._link(wrap, "mdi:cog", "Erweitert", "Dezimalstellen, Schwelle kW, Punkte, Beschriftungen, Klick", () => this._go(["g"]));
   }
@@ -658,16 +622,10 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
       this._iconBtn(EF_ICONS.down, "Nach unten", () => this._move(cfg.panels, i, 1, (x, y) => { this._path = ["p", y]; })),
       this._iconBtn(EF_ICONS.close, "Bereich löschen", () => { cfg.panels.splice(i, 1); this._path = []; this._structural(); })
     ]);
-    const prevType = p.type || "circuit";
     wrap.appendChild(this._form(this._S().panelCommon(circuitOptions), p, {
-      map: o => ({...o, type: o.type || "circuit", circuit: String(o.circuit || 0), icon: o.icon || (prevType === "balance" ? "mdi:solar-power" : "mdi:flash"), color: efToRgb(o.color, "orange")}),
-      unmap: v => ({...v, circuit: Number(v.circuit || 0)}),
-      onChange: o => { if ((o.type || "circuit") !== prevType) this._structural(); }
+      map: o => ({...o, circuit: String(o.circuit || 0), icon: o.icon || "mdi:flash", color: efToRgb(o.color, "orange")}),
+      unmap: v => ({...v, circuit: Number(v.circuit || 0)})
     }));
-    if (prevType === "balance") {
-      wrap.appendChild(this._form(this._S().panelBalance, p, {map: o => ({show_pv: true, show_feed_in: true, show_own: true, show_autarky: true, ...o})}));
-      return;
-    }
     wrap.appendChild(this._form(this._S().panelCircuit, p, {map: o => ({show_meter: true, show_bar: true, ...o})}));
     this._title(wrap, "Zeilen");
     p.rows = Array.isArray(p.rows) ? p.rows : [];

@@ -23,9 +23,9 @@ Jeder Stromkreis besteht aus:
 Ein Stromkreis **ohne PV** wird als einfache Reihe *Netz → Haus → Gerät* gezeichnet (z. B. Wärmepumpe mit eigenem Zähler). Es gibt keine Verbindung zwischen Stromkreisen: PV wird nur dem eigenen Stromkreis zugeordnet.
 
 ### Bereiche unter dem Diagramm
+Es gibt Stromkreis-Bereiche (die Bilanz mit Eigenverbrauch und Autarkie liefert das Energie-Dashboard von Home Assistant). Ein Bereich enthält:
 - **Stromkreis-Bereich:** Titel, Icon, Farbe, Anzeige von Leistung/Zählerstand, Verteilungsbalken und beliebig viele **Zeilen**.
   Jede Zeile hat eine Quelle: *eigener Sensor*, *Haus-Gesamt*, *Gerät*, *Batterie* oder *Rest (Haus minus Gerät)*.
-- **PV & Bilanz:** PV-Produktion, Einspeisung, Eigenverbrauchsquote, Autarkiegrad (jeweils ein-/ausblendbar).
 
 ## Beispiel (YAML)
 ```yaml
@@ -74,9 +74,6 @@ panels:
     color: red
     show_bar: false
     rows: []
-  - type: balance
-    circuit: 0
-    title: PV & Bilanz
 ```
 Farben: Farbwähler im Editor (gespeichert als `[r, g, b]`), in YAML zusätzlich `orange`, `yellow`, `blue`, `violet`, `green`, `teal`, `red`, `grey` oder ein Hex-Wert (`"#23a9aa"`).
 
