@@ -86,6 +86,27 @@ panels:
 ```
 Farben: Farbwähler im Editor (gespeichert als `[r, g, b]`), in YAML zusätzlich `orange`, `yellow`, `blue`, `violet`, `green`, `teal`, `red`, `grey` oder ein Hex-Wert (`"#23a9aa"`).
 
+## Allgemeine Optionen
+Alle Optionen sind sowohl im Editor (Seite **Erweitert**) als auch in YAML einstellbar:
+
+| Option | Standard | Bedeutung |
+|---|---|---|
+| `title` | – | Titel oberhalb des Diagramms |
+| `base_decimals` | `0` | Nachkommastellen bei Werten in W |
+| `kilo_decimals` | `2` | Nachkommastellen bei Werten in kW |
+| `kilo_threshold` | `1000` | Ab diesem Wert (in W) wird in kW angezeigt |
+| `clickable_entities` | `true` | Klick öffnet den Sensor-Dialog |
+| `disable_dots` | `false` | Bewegte Punkte ausschalten |
+| `no_labels` | `false` | Beschriftungen der Kreise ausblenden |
+| `style_ha_card` | – | Eigene CSS-Eigenschaften für die Karte (nur YAML, wie bei der Power Flow Card Plus) |
+
+Standardmäßig hat die Karte den abgedunkelten Dashboard-Look (`background: rgba(36,39,58,.72)`, Rahmen `rgba(202,211,245,.10)`, Radius `22px`, kein Schatten). Anpassen per Beispiel:
+```yaml
+style_ha_card:
+  border-radius: 12px
+  background: rgba(20, 22, 35, 0.9)
+```
+
 ## Hinweise
 - Leistungssensoren akzeptieren `W` und `kW`, Zählerstände `Wh` und `kWh`.
 - Klick auf einen Kreis oder eine Zeile öffnet den Dialog des Sensors.
