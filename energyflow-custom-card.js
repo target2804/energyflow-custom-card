@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.11.1
+/* EnergyFlow Custom Card — v0.11.2
  * Modular energy flow card: any number of electrically separate circuits
  * (each with its own grid meter, optional PV, a "home" node and an optional device),
  * plus freely configurable detail panels. Visual editor included.
@@ -11,7 +11,7 @@
  * (e.g. "layout", "preview", "hass"), they would be shadowed.
  */
 
-const EF_VERSION = "0.11.1";
+const EF_VERSION = "0.11.2";
 const EF_TYPE = "custom:energyflow-custom-card";
 const EF_EXPORT_COLOR = "#a66add";
 const EF_PALETTE = {orange:"#e9a219",yellow:"#f0ba27",blue:"#329af0",violet:"#b184e5",green:"#24a85a",teal:"#23a9aa",red:"#e0556b",grey:"#8b92a5"};
@@ -642,16 +642,12 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
     p.rows.forEach((r, j) => {
       const row = this._el("div", "entity");
       const src = r.source || "entity";
-      if (src === "entity") {
-        const pick = document.createElement("ha-entity-picker");
-        pick.hass = this._hass; pick.value = r.entity || ""; pick.setAttribute("allow-custom-entity", ""); pick.hideClearIcon = true;
-        pick.addEventListener("value-changed", ev => { ev.stopPropagation(); const v = ev.detail.value; if (v) r.entity = v; else delete r.entity; this._emit(); });
-        row.appendChild(pick);
-      } else {
-        const label = {home: "Haus-Gesamt", device: "Gerät", battery: "Batterie", remainder: "Rest (Haus minus Gerät)"}[src] || src;
-        const sp = this._el("div", "special-row"); sp.appendChild(this._el("span", "", r.name || label)); sp.appendChild(this._el("span", "secondary", label));
-        row.appendChild(sp);
-      }
+      const label = {entity: "Entität", home: "Haus-Gesamt", device: "Gerät", battery: "Batterie", remainder: "Rest (Haus minus Gerät)"}[src] || src;
+      const fn = r.entity && this._hass && this._hass.states[r.entity] && this._hass.states[r.entity].attributes.friendly_name;
+      const sp = this._el("div", "special-row");
+      sp.appendChild(this._el("span", "", r.name || fn || r.entity || label));
+      sp.appendChild(this._el("span", "secondary", src === "entity" ? (r.entity || "keine Entität gewählt") : label));
+      row.appendChild(sp);
       row.appendChild(this._iconBtn(EF_ICONS.up, "Nach oben", () => this._move(p.rows, j, -1), "small"));
       row.appendChild(this._iconBtn(EF_ICONS.down, "Nach unten", () => this._move(p.rows, j, 1), "small"));
       row.appendChild(this._iconBtn(EF_ICONS.close, "Entfernen", () => { p.rows.splice(j, 1); this._structural(); }, "small"));
@@ -700,8 +696,7 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
     .pill:hover{background:rgba(127,127,127,.12)}
     .adds{display:flex;gap:8px;flex-wrap:wrap}
     .entity{display:flex;align-items:center}
-    .entity ha-entity-picker{flex-grow:1;min-width:0}
-    .special-row{height:60px;display:flex;flex-direction:column;justify-content:center;flex-grow:1;font-size:16px}
+        .special-row{height:60px;display:flex;flex-direction:column;justify-content:center;flex-grow:1;font-size:16px}
     ha-icon-button.small{--mdc-icon-button-size:36px;color:var(--secondary-text-color)}
     .add-entity{display:block}
   `; }
