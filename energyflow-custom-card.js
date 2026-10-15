@@ -41,11 +41,11 @@ class EnergyFlowCustomCard extends HTMLElement {
     this.shadowRoot.innerHTML='<style>'+this.css()+'</style>'+
       '<ha-card><div class="head"><span>'+ico('mdi:transmission-tower','#cfd6e5')+' '+this.esc(c.title||'Energiefluss')+'</span><small>● Live</small></div>'+
       '<div class="flow-layout"><svg class="flow-wires" viewBox="0 0 1000 520" preserveAspectRatio="none" aria-hidden="true">'+
-      '<path class="wire solar-to-grid" d="M135 227 C290 227 335 89 503 89"/><path class="wire solar-to-home" d="M505 89 C642 89 693 239 865 239"/><path class="wire grid-to-home" d="M135 252 H865"/><path class="wire ev-line" d="M865 89 V239"/><path class="wire wp-wire" d="M135 430 H485"/>'+
-      '<circle class="dot dot-purple" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 227 C290 227 335 89 503 89"/></circle>'+
-      '<circle class="dot dot-orange" r="5"><animateMotion dur="4s" repeatCount="indefinite" path="M505 89 C642 89 693 239 865 239"/></circle>'+
-      '<circle class="dot dot-blue" r="5"><animateMotion dur="4.5s" repeatCount="indefinite" path="M135 252 H865"/></circle>'+
-      '<circle class="dot dot-wp" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 430 H485"/></circle></svg>'+
+      '<path class="wire solar-to-grid" d="M135 226 C290 226 335 71 500 71"/><path class="wire solar-to-home" d="M500 71 C642 71 693 285 865 285"/><path class="wire grid-to-home" d="M135 226 C395 258 603 295 865 285"/><path class="wire ev-line" d="M865 68 V285"/><path class="wire wp-wire" d="M135 441 H485"/>'+
+      '<circle class="dot dot-purple" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 226 C290 226 335 71 500 71"/></circle>'+
+      '<circle class="dot dot-orange" r="5"><animateMotion dur="4s" repeatCount="indefinite" path="M500 71 C642 71 693 285 865 285"/></circle>'+
+      '<circle class="dot dot-blue" r="5"><animateMotion dur="4.5s" repeatCount="indefinite" path="M135 226 C395 258 603 295 865 285"/></circle>'+
+      '<circle class="dot dot-wp" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 441 H485"/></circle></svg>'+
       '<div class="flow-pv">'+circle("PV-Produktion",this.fmt(solar),"mdi:solar-power","#e9a219",h.solar)+'</div>'+
       '<div class="flow-grid">'+circle("Netz Haus",grid===null?"–":(grid<0?"← ":"→ ")+this.fmt(Math.abs(grid)),"mdi:transmission-tower",grid<0?"#aa70dc":"#329af0",h.grid)+'</div>'+
       '<div class="flow-home">'+circle("Haus",this.fmt(hv),"mdi:home","#e9a219",h.total)+'</div>'+
