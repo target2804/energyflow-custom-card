@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.7.0
+/* EnergyFlow Custom Card — v0.8.0
  * Modular energy flow card: any number of electrically separate circuits
  * (each with its own grid meter, optional PV, a "home" node and an optional device),
  * plus freely configurable detail panels. Visual editor included.
@@ -11,7 +11,7 @@
  * (e.g. "layout", "preview", "hass"), they would be shadowed.
  */
 
-const EF_VERSION = "0.7.0";
+const EF_VERSION = "0.8.0";
 const EF_TYPE = "custom:energyflow-custom-card";
 const EF_EXPORT_COLOR = "#a66add";
 const EF_PALETTE = {orange:"#e9a219",yellow:"#f0ba27",blue:"#329af0",violet:"#b184e5",green:"#24a85a",teal:"#23a9aa",red:"#e0556b",grey:"#8b92a5"};
@@ -127,16 +127,19 @@ class EnergyFlowCustomCard extends HTMLElement {
 
   /* ---------- resolved circuit (config + live values) ---------- */
   _circuit(c, i) {
-    const g = c.grid || {}, s = c.solar || {}, hm = c.home || {}, d = c.device || {};
+    const g = c.grid || {}, s = c.solar || {}, hm = c.home || {}, d = c.device || {}, bt = c.battery || {};
     const hasSolar = s.enabled !== undefined ? !!s.enabled : !!s.entity;
     const hasDev = d.enabled !== undefined ? !!d.enabled : !!d.entity;
+    const hasBat = bt.enabled !== undefined ? !!bt.enabled : !!bt.entity;
     const sign = g.invert ? -1 : 1;
     const gridRaw = this.watts(g.entity);
     const gridW = gridRaw === null ? null : gridRaw * sign;
     const solarW = hasSolar ? this.watts(s.entity) : null;
+    const batRaw = hasBat ? this.watts(bt.entity) : null;
+    const batW = batRaw === null ? null : batRaw * (bt.invert ? -1 : 1);   // positive = discharging, negative = charging
     let homeW = hm.entity ? this.watts(hm.entity) : null;
     if (homeW === null && !hm.entity) {
-      if (hasSolar) homeW = solarW !== null && gridW !== null ? Math.max(0, solarW + gridW) : null;
+      if (hasSolar) homeW = solarW !== null && gridW !== null ? Math.max(0, solarW + gridW + (batW || 0)) : null;
       else homeW = gridW !== null ? Math.max(0, gridW) : null;
     }
     const devW = hasDev ? this.watts(d.entity) : null;
@@ -144,12 +147,14 @@ class EnergyFlowCustomCard extends HTMLElement {
     const own = solarW > 0 && pvUse !== null ? Math.min(100, Math.round(pvUse / solarW * 100)) : null;
     const autarky = homeW > 0 && pvUse !== null ? Math.min(100, Math.round(pvUse / homeW * 100)) : null;
     return {
-      i, name: c.name || ("Stromkreis " + (i + 1)), hasSolar, hasDev, gridW, solarW, homeW, devW, pvUse, own, autarky,
+      i, name: c.name || ("Stromkreis " + (i + 1)), hasSolar, hasDev, hasBat, batW, gridW, solarW, homeW, devW, pvUse, own, autarky,
       devSoc: d.soc ? this.val(d.soc) : null,
+      batSoc: bt.soc ? this.val(bt.soc) : null,
       grid: {entity: g.entity, name: g.name || "Netz", icon: g.icon || "mdi:transmission-tower", color: efColor(g.color, "blue"), meter: g.meter_reading},
       solar: {entity: s.entity, name: s.name || "PV-Produktion", icon: s.icon || "mdi:solar-power", color: efColor(s.color, "orange")},
       home: {entity: hm.entity, name: hm.name || "Haus", icon: hm.icon || "mdi:home", color: efColor(hm.color, "orange")},
-      device: {entity: d.entity, name: d.name || "Gerät", icon: d.icon || "mdi:car", color: efColor(d.color, "green")}
+      device: {entity: d.entity, name: d.name || "Gerät", icon: d.icon || "mdi:car", color: efColor(d.color, "green")},
+      battery: {entity: bt.entity, name: bt.name || "Batterie", icon: bt.icon || "mdi:battery-high", color: efColor(bt.color, "teal")}
     };
   }
 
@@ -170,6 +175,12 @@ class EnergyFlowCustomCard extends HTMLElement {
       } else {
         const yMid = y + R + 6;
         b = {xL, xC, xR, yTop: yMid, yMid, bottom: yMid + R + 28};
+      }
+      b.R = R;
+      if (c.hasBat) {   // battery hangs below the grid-home line, joined by a short vertical branch
+        b.xBat = c.hasSolar ? xC : Math.round((xL + xC) / 2);
+        b.yBat = b.yMid + Math.round(R * (c.hasSolar ? 2.3 : 2.9));   // without PV the home label sits next to the branch
+        b.bottom = b.yBat + R + 28;
       }
       L.blocks.push(b);
       y = b.bottom + (i < cs.length - 1 ? 36 : 0);
@@ -198,6 +209,7 @@ class EnergyFlowCustomCard extends HTMLElement {
         wires.push({...this._elbow(xC - L.dx, pvY, xL + sideX, yMid - L.dy), color: EF_EXPORT_COLOR, active: c.gridW !== null && -c.gridW > MIN});
         wires.push({...this._elbow(xC + L.dx, pvY, xR - sideX, yMid - L.dy), color: c.solar.color, active: c.pvUse !== null && c.pvUse > MIN});
         if (c.hasDev) wires.push({...line(xR, yMid - R, xR, yTop + R), color: c.device.color, active: c.devW !== null && c.devW > MIN});
+        this._battery(c, b, wires, nodes, line, MIN);
         const exporting = c.gridW !== null && c.gridW < 0;
         nodes.push({x: xC, y: yTop, pos: "above", name: c.solar.name, value: this.fmt(c.solarW), icon: c.solar.icon, color: c.solar.color, entity: c.solar.entity});
         nodes.push({x: xL, y: yMid, pos: "below", name: c.grid.name, value: c.gridW === null ? "–" : (exporting ? "← " : "→ ") + fmtAbs(c.gridW), icon: c.grid.icon, color: exporting ? EF_EXPORT_COLOR : c.grid.color, entity: c.grid.entity});
@@ -207,12 +219,23 @@ class EnergyFlowCustomCard extends HTMLElement {
         const flow = c.gridW !== null ? c.gridW : c.homeW;
         wires.push({...line(xL + R, yMid, xC - R, yMid), color: c.home.color, active: flow !== null && flow > MIN});
         if (c.hasDev) wires.push({...line(xC + R, yMid, xR - R, yMid), color: c.device.color, active: c.devW !== null && c.devW > MIN});
+        this._battery(c, b, wires, nodes, line, MIN);
         nodes.push({x: xL, y: yMid, pos: "below", name: c.grid.name, value: fmtAbs(c.gridW), icon: c.grid.icon, color: c.grid.color, entity: c.grid.entity});
         nodes.push({x: xC, y: yMid, pos: "below", name: c.home.name, value: this.fmt(c.homeW), icon: c.home.icon, color: c.home.color, entity: c.home.entity});
         if (c.hasDev) nodes.push({x: xR, y: yMid, pos: "below", name: c.device.name, value: this.fmt(c.devW), icon: c.device.icon, color: c.device.color, entity: c.device.entity, extra: c.devSoc === null ? "" : Math.round(c.devSoc) + " %"});
       }
     });
     return {wires, nodes};
+  }
+
+  _battery(c, b, wires, nodes, line, MIN) {
+    if (!c.hasBat) return;
+    const w = c.batW, charging = w !== null && w < -MIN, discharging = w !== null && w > MIN;
+    const top = line(b.xBat, b.yMid, b.xBat, b.yBat - b.R);
+    const rev = line(b.xBat, b.yBat - b.R, b.xBat, b.yMid);
+    wires.push({...(discharging ? rev : top), color: c.battery.color, active: charging || discharging});
+    nodes.push({x: b.xBat, y: b.yBat, pos: "below", name: c.battery.name, value: this.fmt(w === null ? null : Math.abs(w)), icon: c.battery.icon, color: c.battery.color, entity: c.battery.entity,
+      extra: c.batSoc === null ? "" : Math.round(c.batSoc) + " %"});
   }
 
   ensureSkeleton() {
@@ -296,6 +319,7 @@ class EnergyFlowCustomCard extends HTMLElement {
     let power = null, showPower = true, entity = r.entity || "", name = r.name, icon = r.icon, def = "mdi:flash";
     if (src === "home") { power = c.homeW; entity = r.entity || c.home.entity || ""; name = name || c.home.name; def = c.home.icon; }
     else if (src === "device") { power = c.devW; entity = r.entity || c.device.entity || ""; name = name || c.device.name; def = c.device.icon; }
+    else if (src === "battery") { power = c.batW === null ? null : Math.abs(c.batW); entity = r.entity || c.battery.entity || ""; name = name || c.battery.name; def = c.battery.icon; }
     else if (src === "remainder") { power = c.homeW !== null ? Math.max(0, c.homeW - (c.devW || 0)) : null; name = name || "Verbrauch"; def = "mdi:home"; }
     else { power = r.entity ? this.watts(r.entity) : null; showPower = !!r.entity; name = name || this.state(r.entity)?.attributes?.friendly_name || r.entity || "Zeile"; }
     const inBar = r.in_bar !== undefined ? !!r.in_bar : (src === "remainder" || src === "device");
@@ -363,8 +387,8 @@ class EnergyFlowCustomCard extends HTMLElement {
     h3{font-size:15px;line-height:1.35;font-weight:600;margin:0 0 5px;overflow-wrap:normal}
     h3 ha-icon,.consumer ha-icon{flex-shrink:0}
     .hint{font-size:12px;color:var(--secondary-text-color,#abb2c0);margin:0 0 13px}
-    .metric{display:flex;justify-content:space-between;gap:7px;color:var(--secondary-text-color,#abb2c0);font-size:12px;flex-wrap:wrap}
-    .metric span:last-child{text-align:right}.metric strong{display:block;font-size:16px;color:var(--primary-text-color,#fff);margin-top:6px;white-space:nowrap}
+    .metric{display:flex;justify-content:space-between;text-align:left;gap:6px 14px;color:var(--secondary-text-color,#abb2c0);font-size:12px;flex-wrap:wrap}
+    .metric strong{display:block;font-size:16px;color:var(--primary-text-color,#fff);margin-top:6px;white-space:nowrap}
     .stack{height:9px;background:#343b4a;border-radius:10px;display:flex;overflow:hidden;margin:14px 0 10px}
     .consumer{display:flex;align-items:center;gap:6px;font-size:12px;padding:7px 0}
     .consumer ha-icon{--mdc-icon-size:20px!important}
@@ -417,14 +441,15 @@ const EF_LABELS = {
 };
 const EF_ENTITY_HELPER = "Optional: leer lassen, wenn der Wert nicht angezeigt oder berechnet werden soll.";
 const EF_HELPERS = {
-  invert: "Home Assistant: positiv = Bezug, negativ = Einspeisung. Hier umkehren, falls dein Sensor andersherum zählt.",
+  invert: "Netz: positiv = Bezug, negativ = Einspeisung. Batterie: positiv = Entladen, negativ = Laden. Umkehren, falls dein Sensor andersherum zählt.",
   source: "Eigener Sensor, Haus-Gesamt, Gerät oder Rest (Haus minus Gerät)."
 };
 const EF_NODES = {
   grid: {label: "Netz", icon: "mdi:transmission-tower", color: "blue"},
   solar: {label: "PV-Anlage", icon: "mdi:solar-power", color: "orange"},
   home: {label: "Haus / Verbraucher", icon: "mdi:home", color: "orange"},
-  device: {label: "Gerät (z. B. Auto/Wallbox)", icon: "mdi:car", color: "green"}
+  device: {label: "Gerät (z. B. Auto/Wallbox)", icon: "mdi:car", color: "green"},
+  battery: {label: "Batterie (optional)", icon: "mdi:battery-high", color: "teal"}
 };
 
 class EnergyFlowCustomCardEditor extends HTMLElement {
@@ -450,7 +475,7 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
 
   _pruned() {
     const c = JSON.parse(JSON.stringify(this._cfg));
-    c.circuits.forEach(x => ["grid", "solar", "home", "device"].forEach(k => { if (x[k] && !Object.keys(x[k]).length) delete x[k]; }));
+    c.circuits.forEach(x => ["grid", "solar", "home", "device", "battery"].forEach(k => { if (x[k] && !Object.keys(x[k]).length) delete x[k]; }));
     return c;
   }
   _emit() {
@@ -529,6 +554,7 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
       solar: [bool("enabled"), ent("entity"), two(text("name"), icon), color],
       home: [ent("entity"), two(text("name"), icon), color],
       device: [bool("enabled"), ent("entity"), two(text("name"), icon), two(color, ent("soc"))],
+      battery: [bool("enabled"), ent("entity"), two(text("name"), icon), two(color, ent("soc")), bool("invert")],
       panelCommon: circuitOptions => [
         {name: "type", selector: {select: {mode: "dropdown", options: [{value: "circuit", label: "Stromkreis-Bereich (Zeilen)"}, {value: "balance", label: "PV & Bilanz"}]}}},
         {name: "circuit", selector: {select: {mode: "dropdown", options: circuitOptions.length ? circuitOptions : [{value: "0", label: "–"}]}}},
@@ -537,7 +563,7 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
       panelCircuit: [two(bool("show_meter"), bool("show_bar"))],
       panelBalance: [two(bool("show_pv"), bool("show_feed_in")), two(bool("show_own"), bool("show_autarky"))],
       row: [
-        {name: "source", selector: {select: {mode: "dropdown", options: [{value: "entity", label: "Eigener Sensor"}, {value: "home", label: "Haus-Gesamt des Stromkreises"}, {value: "device", label: "Gerät des Stromkreises"}, {value: "remainder", label: "Rest (Haus minus Gerät)"}]}}},
+        {name: "source", selector: {select: {mode: "dropdown", options: [{value: "entity", label: "Eigener Sensor"}, {value: "home", label: "Haus-Gesamt des Stromkreises"}, {value: "device", label: "Gerät des Stromkreises"}, {value: "battery", label: "Batterie des Stromkreises"}, {value: "remainder", label: "Rest (Haus minus Gerät)"}]}}},
         ent("entity"), two(text("name"), icon), two(color, bool("in_bar")), ent("status_entity"), ent("energy_entity")
       ]
     };
@@ -564,7 +590,7 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
     const cfg = this._cfg;
     this._title(wrap, "Stromkreise");
     cfg.circuits.forEach((c, i) => {
-      const parts = ["Netz"]; if (this._on(c.solar)) parts.push("PV"); parts.push("Haus"); if (this._on(c.device)) parts.push("Gerät");
+      const parts = ["Netz"]; if (this._on(c.solar)) parts.push("PV"); parts.push("Haus"); if (this._on(c.device)) parts.push("Gerät"); if (this._on(c.battery)) parts.push("Batterie");
       this._link(wrap, (c.home && c.home.icon) || "mdi:home-lightning-bolt", (i + 1) + ". " + (c.name || "Stromkreis"), parts.join(" · "), () => this._go(["c", i]));
     });
     wrap.appendChild(this._btn("+ Stromkreis hinzufügen", () => { cfg.circuits.push({name: "Stromkreis " + (cfg.circuits.length + 1), grid: {name: "Netz"}, home: {name: "Haus"}}); this._structural(); }, "add"));
@@ -594,9 +620,9 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
       })
     ]);
     wrap.appendChild(this._form(this._S().circuit, c));
-    ["grid", "solar", "home", "device"].forEach(k => {
+    ["grid", "solar", "home", "device", "battery"].forEach(k => {
       const nd = c[k] || {}, def = EF_NODES[k];
-      const sec = k === "solar" || k === "device" ? (this._on(nd) ? (nd.entity || "aktiv") : "nicht aktiv") : (nd.entity || "");
+      const sec = k === "solar" || k === "device" || k === "battery" ? (this._on(nd) ? (nd.entity || "aktiv") : "nicht aktiv") : (nd.entity || "");
       this._link(wrap, nd.icon || def.icon, def.label, sec, () => this._go(["c", i, k]));
     });
   }
@@ -606,7 +632,7 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
     const def = EF_NODES[kind];
     c[kind] = c[kind] || {};
     this._header(wrap, (c.name || "Stromkreis") + " › " + def.label);
-    wrap.appendChild(this._form(this._S()[kind], c[kind], {entityHelper: kind === "home" || kind === "device",
+    wrap.appendChild(this._form(this._S()[kind], c[kind], {entityHelper: kind === "home" || kind === "device" || kind === "battery",
       map: o => ({icon: def.icon, ...o, color: efToRgb(o.color, def.color)})}));
   }
 
@@ -646,7 +672,7 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
         pick.addEventListener("value-changed", ev => { ev.stopPropagation(); const v = ev.detail.value; if (v) r.entity = v; else delete r.entity; this._emit(); });
         row.appendChild(pick);
       } else {
-        const label = {home: "Haus-Gesamt", device: "Gerät", remainder: "Rest (Haus minus Gerät)"}[src] || src;
+        const label = {home: "Haus-Gesamt", device: "Gerät", battery: "Batterie", remainder: "Rest (Haus minus Gerät)"}[src] || src;
         const sp = this._el("div", "special-row"); sp.appendChild(this._el("span", "", r.name || label)); sp.appendChild(this._el("span", "secondary", label));
         row.appendChild(sp);
       }

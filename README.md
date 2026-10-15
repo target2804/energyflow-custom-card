@@ -18,12 +18,13 @@ Jeder Stromkreis besteht aus:
 | **PV-Anlage** | nein | Leistungssensor, Name, Icon, Farbe. Mit PV entsteht das Dreieck PV – Netz – Haus, inklusive Einspeise-Leitung |
 | **Haus / Verbraucher** | ja | Leistungssensor (leer = wird aus PV + Netz berechnet), Name, Icon, Farbe |
 | **Gerät** | nein | z. B. Auto/Wallbox: Leistungssensor, Name, Icon, Farbe, Ladestand (%) |
+| **Batterie** | nein | Leistungssensor (positiv = Entladen, negativ = Laden), Ladestand (%), Name, Icon, Farbe, optional Vorzeichen umkehren. Standardmäßig aus; wird unter dem Netz-Haus-Strang angeschlossen |
 
 Ein Stromkreis **ohne PV** wird als einfache Reihe *Netz → Haus → Gerät* gezeichnet (z. B. Wärmepumpe mit eigenem Zähler). Es gibt keine Verbindung zwischen Stromkreisen: PV wird nur dem eigenen Stromkreis zugeordnet.
 
 ### Bereiche unter dem Diagramm
 - **Stromkreis-Bereich:** Titel, Icon, Farbe, Anzeige von Leistung/Zählerstand, Verteilungsbalken und beliebig viele **Zeilen**.
-  Jede Zeile hat eine Quelle: *eigener Sensor*, *Haus-Gesamt*, *Gerät* oder *Rest (Haus minus Gerät)*, dazu optional Status-Sensor und Energie-Sensor (kWh gesamt).
+  Jede Zeile hat eine Quelle: *eigener Sensor*, *Haus-Gesamt*, *Gerät*, *Batterie* oder *Rest (Haus minus Gerät)*, dazu optional Status-Sensor und Energie-Sensor (kWh gesamt).
 - **PV & Bilanz:** PV-Produktion, Einspeisung, Eigenverbrauchsquote, Autarkiegrad (jeweils ein-/ausblendbar).
 
 ## Beispiel (YAML)
