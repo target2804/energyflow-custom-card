@@ -21,6 +21,10 @@ ev:
   soc: sensor.az_b_489_state_of_charge
 heat_pump:
   power: sensor.wattwachter_2_energy_now
+  compressor_status: sensor.buderus_gateway_101730536_kompressorstatus
+  heater_status: sensor.buderus_gateway_101730536_heizstabstatus
+  compressor_energy: sensor.buderus_gateway_101730536_stromverbrauch_warmepumpe_gesamt
+  heater_energy: sensor.buderus_gateway_101730536_stromverbrauch_elektrischer_zuheizer_gesamt
   # meter_reading: sensor.DEIN_WP_ZAEHLER_KWH
 consumers:
   - entity: sensor.steckdose_kueche_power
@@ -43,3 +47,8 @@ consumers:
 
 ## License
 MIT.
+
+## Wärmestrom-Anzeige
+Die Zeilen Kompressor und Heizstab zeigen ihren Betriebszustand und den jeweiligen kumulierten Energieverbrauch (kWh). Die vier Buderus-Entitäten sind im Code vorgegeben und per YAML überschreibbar. Live-Leistungen in Watt erscheinen nur bei Angabe der optionalen Felder `heat_pump.compressor_power` und `heat_pump.heater_power`; Gesamt-kWh-Werte sind keine Live-Leistung.
+
+Stand v0.5.1: Der Wärmepumpen-Flow wurde nach unten versetzt und die beiden PV-Abzweige optisch getrennt. Syntaxprüfung erfolgreich; Layout muss in Home Assistant überprüft werden.
