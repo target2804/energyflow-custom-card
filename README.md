@@ -39,7 +39,7 @@ consumers:
 - The house-without-EV row is derived by subtracting EV power from the house total. Additional consumers are shown informationally and are not added twice.
 - Click a live sensor for the Home Assistant more-info dialog.
 - Blank meter readings are intentional until real kWh entity IDs are configured.
-- First prototype v0.1.0: fixed layout with flowing SVG indicators. Visual editor, exact mimicry of the mockup, configurable animations and comprehensive test coverage are not implemented yet.
+- Prototype v0.2: improved diagram geometry, larger typography, WP meter details and semicircular autonomy/self-consumption gauges. Visual editor, pixel-perfect mockup matching, configurable animations and comprehensive test coverage are not implemented yet.
 
 ## License
 MIT.
