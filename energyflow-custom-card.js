@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.10.1
+/* EnergyFlow Custom Card — v0.10.2
  * Modular energy flow card: any number of electrically separate circuits
  * (each with its own grid meter, optional PV, a "home" node and an optional device),
  * plus freely configurable detail panels. Visual editor included.
@@ -11,7 +11,7 @@
  * (e.g. "layout", "preview", "hass"), they would be shadowed.
  */
 
-const EF_VERSION = "0.10.1";
+const EF_VERSION = "0.10.2";
 const EF_TYPE = "custom:energyflow-custom-card";
 const EF_EXPORT_COLOR = "#a66add";
 const EF_PALETTE = {orange:"#e9a219",yellow:"#f0ba27",blue:"#329af0",violet:"#b184e5",green:"#24a85a",teal:"#23a9aa",red:"#e0556b",grey:"#8b92a5"};
@@ -362,11 +362,9 @@ class EnergyFlowCustomCard extends HTMLElement {
       if (segs) html += '<div class="stack">' + segs + "</div>";
     }
     html += rows.map(r => {
-      const detail = r.status || r.energy;
-      if (!detail) return '<div class="consumer" data-e="' + this.esc(r.entity) + '">' + this.ico(r.icon, r.color) + "<span>" + this.esc(r.name) + "</span>" + (r.showPower ? "<strong>" + this.fmt(r.power) + "</strong>" : "") + "</div>";
-      return '<div class="wp-detail" data-e="' + this.esc(r.status || r.entity || r.energy) + '">' + this.ico(r.icon, r.color) +
-        '<div class="wp-detail-main"><strong>' + this.esc(r.name) + "</strong>" + (r.status ? "<span>" + this.esc(this._statusLabel(r.status)) + "</span>" : "") + "</div>" +
-        '<div class="wp-detail-values">' + (r.showPower ? "<strong>" + this.fmt(r.power) + "</strong>" : "") + (r.energy ? "<span>" + this.fmtKwh(this.kwh(r.energy)) + " gesamt</span>" : "") + "</div></div>";
+      const status = r.status ? ' <em>' + this.esc(this._statusLabel(r.status)) + '</em>' : "";
+      const vals = (r.showPower ? "<strong>" + this.fmt(r.power) + "</strong>" : "") + (r.energy ? "<strong>" + this.fmtKwh(this.kwh(r.energy)) + "</strong>" : "");
+      return '<div class="consumer" data-e="' + this.esc(r.status || r.entity || r.energy) + '">' + this.ico(r.icon, r.color) + "<span>" + this.esc(r.name) + status + "</span>" + (vals ? '<div class="vals">' + vals + "</div>" : "") + "</div>";
     }).join("");
     return html + "</section>";
   }
@@ -416,7 +414,7 @@ class EnergyFlowCustomCard extends HTMLElement {
     .stack{height:9px;background:#343b4a;border-radius:10px;display:flex;overflow:hidden;margin:14px 0 10px}
     .consumer{display:flex;align-items:center;gap:6px;font-size:12px;padding:7px 0}
     .consumer ha-icon{--mdc-icon-size:20px!important}
-    .consumer span{min-width:0;flex:1}.consumer strong{margin-left:auto;text-align:right;white-space:nowrap;font-size:12px}
+    .consumer span{min-width:0;flex:1}.consumer strong{margin-left:auto;text-align:right;white-space:nowrap;font-size:12px}.consumer .vals strong{margin-left:0}
     .balance h3{margin-bottom:14px}.balance .hint{margin:0 0 0 auto;font-weight:400}
     .kpi-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px 16px;margin-bottom:16px}
     .kpi{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--secondary-text-color,#abb2c0)}
@@ -428,13 +426,9 @@ class EnergyFlowCustomCard extends HTMLElement {
     .gauge-track{stroke:#353d4d}.gauge-fill{stroke-dashoffset:0}
     .gauge strong{font-size:20px;position:relative;margin-top:-30px;z-index:1}
     .gauge span{font-size:13px;color:var(--secondary-text-color,#abb2c0);margin-top:8px;line-height:1.3;overflow-wrap:normal;hyphens:auto}
-    .wp-detail{display:flex;align-items:center;gap:6px;padding:7px 0;min-width:0;font-size:12px}
-    .wp-detail ha-icon{flex-shrink:0;--mdc-icon-size:20px!important}
-    .wp-detail-main{display:flex;flex-direction:column;gap:2px;flex:1 1 auto;min-width:0;font-size:12px}
-    .wp-detail-main strong{font-size:12px;font-weight:400}
-    .wp-detail-main span{color:var(--secondary-text-color,#abb2c0);font-size:11px}
-    .wp-detail-values{display:flex;flex-direction:column;text-align:right;gap:2px;margin-left:auto;min-width:0;flex:0 1 auto}
-    .wp-detail-values strong{font-size:12px;font-weight:700}.wp-detail-values span{font-size:11px;color:var(--secondary-text-color,#abb2c0)}
+    .metric+.consumer{margin-top:8px}
+    .consumer em{font-style:normal;font-size:11px;color:var(--secondary-text-color,#abb2c0);margin-left:6px}
+    .consumer .vals{display:flex;gap:10px;margin-left:auto;white-space:nowrap}
     @media(max-width:460px){ha-card{padding:11px}.panel{padding:13px}}
     @media(prefers-reduced-motion:reduce){.flow-wires circle{display:none}}
   `; }
