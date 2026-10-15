@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.5.2
+/* EnergyFlow Custom Card — v0.5.3
  * Two electrically separate meters. PV connects exclusively to meter 1.
  *
  * Flow geometry: circles and SVG paths share ONE pixel coordinate system.
@@ -87,6 +87,15 @@ class EnergyFlowCustomCard extends HTMLElement {
   }
   render(){
     if(!this.config)return;
+    try{this._render();this._err=null;}
+    catch(err){   // never let a render problem become a HA "Konfigurationsfehler": show the real message instead
+      console.error("EnergyFlow Custom Card:",err);
+      if(!this.shadowRoot)this.attachShadow({mode:"open"});
+      this._flow=null;this._svgKey=null;
+      this.shadowRoot.innerHTML='<ha-card style="display:block;padding:16px"><strong>EnergyFlow Custom Card – Fehler</strong><pre style="white-space:pre-wrap;font-size:12px;margin:8px 0 0">'+this.esc(err&&err.stack?err.stack:String(err))+'</pre></ha-card>';
+    }
+  }
+  _render(){
     this.ensureSkeleton();
     if(!this._w&&this._flow.clientWidth)this._w=this._flow.clientWidth;
     const c=this.config,h=c.house,wp=c.heat_pump,e=c.ev||{};

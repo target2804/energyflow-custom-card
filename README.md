@@ -51,4 +51,6 @@ MIT.
 ## Wärmestrom-Anzeige
 Die Zeilen Kompressor und Heizstab zeigen ihren Betriebszustand und den jeweiligen kumulierten Energieverbrauch (kWh). Die vier Buderus-Entitäten sind im Code vorgegeben und per YAML überschreibbar. Live-Leistungen in Watt erscheinen nur bei Angabe der optionalen Felder `heat_pump.compressor_power` und `heat_pump.heater_power`; Gesamt-kWh-Werte sind keine Live-Leistung.
 
+Stand v0.5.3: Render-Fehler werden in der Karte mit Meldung angezeigt statt als "Konfigurationsfehler".
+
 Stand v0.5.2: Kreise und SVG-Linien nutzen jetzt ein gemeinsames Pixel-Koordinatensystem (viewBox = gemessene Kartenbreite, keine verzerrende Skalierung). Alle Positionen werden zentral in `layout()` definiert. Violette (PV → Netz Haus) und orange (PV → Haus) Leitung starten an getrennten Punkten links/rechts der PV-Mitte, laufen senkrecht nach unten und biegen mit sanftem Radius ab; die blaue Netzlinie ist durchgehend horizontal. Flow-Punkte laufen entlang der echten Pfade, inaktive Leitungen werden abgedimmt.
