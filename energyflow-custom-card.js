@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.9.2
+/* EnergyFlow Custom Card — v0.10.0
  * Modular energy flow card: any number of electrically separate circuits
  * (each with its own grid meter, optional PV, a "home" node and an optional device),
  * plus freely configurable detail panels. Visual editor included.
@@ -11,7 +11,7 @@
  * (e.g. "layout", "preview", "hass"), they would be shadowed.
  */
 
-const EF_VERSION = "0.9.2";
+const EF_VERSION = "0.10.0";
 const EF_TYPE = "custom:energyflow-custom-card";
 const EF_EXPORT_COLOR = "#a66add";
 const EF_PALETTE = {orange:"#e9a219",yellow:"#f0ba27",blue:"#329af0",violet:"#b184e5",green:"#24a85a",teal:"#23a9aa",red:"#e0556b",grey:"#8b92a5"};
@@ -66,7 +66,7 @@ function efMigrateLegacy(cfg) {
       clean({source: "entity", entity: wp.heater_power, name: "Heizstab", icon: "mdi:radiator", color: "red",
         status_entity: wp.heater_status,
         energy_entity: wp.heater_energy})]},
-    {type: "balance", circuit: 0, title: "PV & Bilanz", icon: "mdi:solar-power", hint: "Hausstromkreis"}
+    {type: "balance", circuit: 0, title: "PV & Bilanz", icon: "mdi:solar-power"}
   ];
   return {type: cfg.type || EF_TYPE, circuits, panels};
 }
@@ -286,6 +286,7 @@ class EnergyFlowCustomCard extends HTMLElement {
     this._title.textContent = c.title || ""; this._title.style.display = c.title ? "block" : "none";
     this._card.style.cssText = Object.keys(st).map(k => k + ":" + st[k]).join(";");   // same idea as Power Flow Card Plus' style_ha_card
     this._card.classList.toggle("no-labels", !!c.no_labels);
+    this._panels.classList.toggle("side", !!c.panels_side_by_side);
     this._card.classList.toggle("no-click", c.clickable_entities === false);
     if (!this._w && this._flow.clientWidth) this._w = this._flow.clientWidth;
     const cs = (this.config.circuits || []).map((c, i) => this._circuit(c, i));
@@ -382,7 +383,7 @@ class EnergyFlowCustomCard extends HTMLElement {
     if (p.show_own !== false) gauges.push(gauge("Eigenverbrauchsquote", c.own, "#f0ba27"));
     if (p.show_autarky !== false) gauges.push(gauge("Autarkiegrad", c.autarky, "#46c97d"));
     return '<section class="panel balance"><h3>' + this.ico(p.icon || "mdi:solar-power", efColor(p.color, "orange")) + " " + this.esc(p.title || "PV & Bilanz") + (p.hint ? ' <span class="hint">' + this.esc(p.hint) + "</span>" : "") + "</h3>" +
-      '<div class="kpis">' + (kpis.length ? '<div class="kpi-list">' + kpis.join("") + "</div>" : "") + (gauges.length ? '<div class="gauge-list">' + gauges.join("") + "</div>" : "") + "</div></section>";
+      (kpis.length ? '<div class="kpi-list">' + kpis.join("") + "</div>" : "") + (gauges.length ? '<div class="gauge-list">' + gauges.join("") + "</div>" : "") + "</section>";
   }
 
   css() { return `
@@ -403,9 +404,9 @@ class EnergyFlowCustomCard extends HTMLElement {
     .flow-label{position:absolute;left:50%;transform:translateX(-50%);font-size:13px;line-height:1.25;white-space:nowrap;font-weight:400;color:var(--secondary-text-color,#abb2c0)}
     .flow-label.above{bottom:calc(100% + 5px)}.flow-label.below{top:calc(100% + 5px)}
     .panels{container-type:inline-size}
-    .meters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-bottom:12px}
+    .meters{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-bottom:12px}
     .meters:last-child{margin-bottom:0}
-    @container (max-width:400px){.meters{grid-template-columns:minmax(0,1fr)}}
+    @container (min-width:401px){.panels.side .meters{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
     .panel{border:1px solid rgba(202,211,245,.12);border-radius:17px;padding:12px;background:rgba(15,20,35,.16);min-width:0}
     h3{font-size:15px;line-height:1.35;font-weight:600;margin:0 0 5px;overflow-wrap:normal}
     h3 ha-icon,.consumer ha-icon{flex-shrink:0}
@@ -417,18 +418,16 @@ class EnergyFlowCustomCard extends HTMLElement {
     .consumer ha-icon{--mdc-icon-size:20px!important}
     .consumer span{min-width:0;flex:1}.consumer strong{margin-left:auto;text-align:right;white-space:nowrap;font-size:12px}
     .balance h3{margin-bottom:14px}.balance .hint{margin:0 0 0 auto;font-weight:400}
-    .kpis{display:grid;grid-template-columns:minmax(0,1fr);gap:16px 10px;align-items:start}
-    @container (min-width:430px){.kpis{grid-template-columns:minmax(0,.9fr) minmax(0,1.5fr)}.kpis>:only-child{grid-column:1/-1}}
-    .kpi-list{display:flex;flex-wrap:wrap;gap:12px 18px}
-    .kpi{display:flex;flex-direction:column;gap:11px;font-size:12px;color:var(--secondary-text-color,#abb2c0);padding-top:13px}
-    .kpi strong{font-size:17px;color:var(--primary-text-color,#fff)}
-    .gauge-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
-    .gauge{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0;position:relative}
-    .gauge-svg{display:block;width:100%;max-width:170px;height:auto;overflow:visible}
+    .kpi-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px 16px;margin-bottom:16px}
+    .kpi{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--secondary-text-color,#abb2c0)}
+    .kpi strong{font-size:20px;font-weight:600;color:var(--primary-text-color,#fff)}
+    .gauge-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;justify-items:center}
+    .gauge{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0;width:100%;max-width:200px;position:relative}
+    .gauge-svg{display:block;width:100%;height:auto;overflow:visible}
     .gauge-track,.gauge-fill{fill:none;stroke-width:14;stroke-linecap:butt}
     .gauge-track{stroke:#353d4d}.gauge-fill{stroke-dashoffset:0}
     .gauge strong{font-size:20px;position:relative;margin-top:-30px;z-index:1}
-    .gauge span{font-size:12px;color:var(--secondary-text-color,#abb2c0);margin-top:8px;line-height:1.3;overflow-wrap:normal;hyphens:auto}
+    .gauge span{font-size:13px;color:var(--secondary-text-color,#abb2c0);margin-top:8px;line-height:1.3;overflow-wrap:normal;hyphens:auto}
     .wp-detail{display:flex;align-items:center;gap:8px;padding:11px 0;border-top:1px solid rgba(202,211,245,.08);min-width:0}
     .wp-detail ha-icon{flex-shrink:0;--mdc-icon-size:21px!important}
     .wp-detail-main{display:flex;flex-direction:column;gap:3px;flex:1 0 auto;font-size:13px}
@@ -459,7 +458,7 @@ const EF_LABELS = {
   name: "Name (Beschriftung)", icon: "Icon", color: "Farbe", entity: "Sensor (Leistung)", meter_reading: "Zählerstand (kWh-Sensor)",
   invert: "Vorzeichen umkehren", display_state: "Anzeige Bezug/Einspeisung", enabled: "Anzeigen", soc: "Ladestand (%-Sensor)",
   base_decimals: "Nachkommastellen (W)", kilo_decimals: "Nachkommastellen (kW)", kilo_threshold: "Umschaltung auf kW ab (W)",
-  clickable_entities: "Klick öffnet Sensor-Dialog", disable_dots: "Bewegte Punkte ausschalten", no_labels: "Beschriftungen ausblenden",
+  clickable_entities: "Klick öffnet Sensor-Dialog", panels_side_by_side: "Bereiche nebeneinander", disable_dots: "Bewegte Punkte ausschalten", no_labels: "Beschriftungen ausblenden",
   title: "Titel", hint: "Zusatztext (rechts)", type: "Typ", circuit: "Stromkreis", show_meter: "Leistung & Zählerstand", show_bar: "Verteilungsbalken",
   source: "Wert", status_entity: "Status-Sensor", energy_entity: "Energie gesamt (kWh-Sensor)", in_bar: "Im Verteilungsbalken",
   show_pv: "PV-Produktion", show_feed_in: "PV-Einspeisung", show_own: "Eigenverbrauchsquote", show_autarky: "Autarkiegrad"
@@ -577,7 +576,7 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
     return {
       circuit: [text("name")],
       title: [text("title")],
-      advanced: [two(num("base_decimals"), num("kilo_decimals")), num("kilo_threshold"), two(bool("clickable_entities"), bool("disable_dots")), bool("no_labels")],
+      advanced: [two(num("base_decimals"), num("kilo_decimals")), num("kilo_threshold"), two(bool("clickable_entities"), bool("disable_dots")), two(bool("no_labels"), bool("panels_side_by_side"))],
       grid: [ent("entity"), two(text("name"), icon), two(color, ent("meter_reading")), {name: "display_state", selector: {select: {mode: "dropdown", options: [{value: "two_way", label: "Beide Richtungen (← Einspeisung, → Bezug)"}, {value: "one_way", label: "Nur Bezug (→)"}, {value: "one_way_reverse", label: "Nur Einspeisung (←)"}]}}}, bool("invert")],
       solar: [bool("enabled"), ent("entity"), two(text("name"), icon), color],
       home: [ent("entity"), two(text("name"), icon), color],
@@ -617,7 +616,7 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
 
   _pageAdvanced(wrap) {
     this._header(wrap, "Erweitert");
-    wrap.appendChild(this._form(this._S().advanced, this._cfg, {map: o => ({clickable_entities: true, disable_dots: false, no_labels: false, ...o})}));
+    wrap.appendChild(this._form(this._S().advanced, this._cfg, {map: o => ({clickable_entities: true, disable_dots: false, no_labels: false, panels_side_by_side: false, ...o})}));
     wrap.appendChild(this._el("div", "secondary", "Aussehen der Karte (Hintergrund, Rahmen, Radius): im Code-Editor über style_ha_card, wie bei der Power Flow Card Plus."));
   }
 

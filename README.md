@@ -82,7 +82,6 @@ panels:
   - type: balance
     circuit: 0
     title: PV & Bilanz
-    hint: Hausstromkreis
 ```
 Farben: Farbwähler im Editor (gespeichert als `[r, g, b]`), in YAML zusätzlich `orange`, `yellow`, `blue`, `violet`, `green`, `teal`, `red`, `grey` oder ein Hex-Wert (`"#23a9aa"`).
 
@@ -98,6 +97,7 @@ Alle Optionen sind sowohl im Editor (Seite **Erweitert**) als auch in YAML einst
 | `clickable_entities` | `true` | Klick öffnet den Sensor-Dialog |
 | `disable_dots` | `false` | Bewegte Punkte ausschalten |
 | `no_labels` | `false` | Beschriftungen der Kreise ausblenden |
+| `panels_side_by_side` | `false` | Bereiche unter dem Diagramm nebeneinander statt untereinander |
 | `style_ha_card` | – | Eigene CSS-Eigenschaften für die Karte (nur YAML, wie bei der Power Flow Card Plus) |
 
 Standardmäßig hat die Karte den abgedunkelten Dashboard-Look (`background: rgba(36,39,58,.72)`, Rahmen `rgba(202,211,245,.10)`, Radius `22px`, kein Schatten). Anpassen per Beispiel:
