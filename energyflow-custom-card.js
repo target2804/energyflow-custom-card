@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.5.0
+/* EnergyFlow Custom Card — v0.6.0
  * Two electrically separate meters. PV connects exclusively to meter 1.
  */
 class EnergyFlowCustomCard extends HTMLElement {
@@ -41,16 +41,16 @@ class EnergyFlowCustomCard extends HTMLElement {
     this.shadowRoot.innerHTML='<style>'+this.css()+'</style>'+
       '<ha-card>'+
       '<div class="flow-layout"><svg class="flow-wires" viewBox="0 0 1000 520" preserveAspectRatio="none" aria-hidden="true">'+
-      '<path class="wire solar-to-grid" d="M135 268 H444 Q500 268 500 215 V165"/><path class="wire solar-to-home" d="M500 165 V215 Q500 268 556 268 H865"/><path class="wire grid-to-home" d="M135 292 H865"/><path class="wire ev-line" d="M865 160 V225"/><path class="wire wp-wire" d="M135 441 H485"/>'+
-      '<circle class="dot dot-purple" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 268 H444 Q500 268 500 215 V165"/></circle>'+
-      '<circle class="dot dot-orange" r="5"><animateMotion dur="4s" repeatCount="indefinite" path="M500 165 V215 Q500 268 556 268 H865"/></circle>'+
-      '<circle class="dot dot-blue" r="5"><animateMotion dur="4.5s" repeatCount="indefinite" path="M135 292 H865"/></circle>'+
-      '<circle class="dot dot-wp" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 441 H485"/></circle></svg>'+
+      '<path class="wire solar-to-grid" d="M135 256 H330 Q440 256 440 185 Q440 135 500 125"/><path class="wire solar-to-home" d="M500 125 Q560 125 560 190 Q560 256 650 256 H865"/><path class="wire grid-to-home" d="M135 300 H865"/><path class="wire ev-line" d="M865 160 V225"/><path class="wire wp-wire" d="M135 480 H485"/>'+
+      '<circle class="dot dot-purple" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 256 H330 Q440 256 440 185 Q440 135 500 125"/></circle>'+
+      '<circle class="dot dot-orange" r="5"><animateMotion dur="4s" repeatCount="indefinite" path="M500 125 Q560 125 560 190 Q560 256 650 256 H865"/></circle>'+
+      '<circle class="dot dot-blue" r="5"><animateMotion dur="4.5s" repeatCount="indefinite" path="M135 300 H865"/></circle>'+
+      '<circle class="dot dot-wp" r="5"><animateMotion dur="5s" repeatCount="indefinite" path="M135 480 H485"/></circle></svg>'+
       '<div class="flow-pv">'+circle("PV-Produktion",this.fmt(solar),"mdi:solar-power","#e9a219",h.solar)+'</div>'+
-      '<div class="flow-grid">'+circle("Netz Haus",grid===null?"–":(grid<0?"← ":"→ ")+this.fmt(Math.abs(grid)),"mdi:transmission-tower",grid<0?"#aa70dc":"#329af0",h.grid)+'</div>'+
+      '<div class="flow-grid">'+circle("Netzenergie Haus",grid===null?"–":(grid<0?"← ":"→ ")+this.fmt(Math.abs(grid)),"mdi:transmission-tower",grid<0?"#aa70dc":"#329af0",h.grid)+'</div>'+
       '<div class="flow-home">'+circle("Haus",this.fmt(hv),"mdi:home","#e9a219",h.total)+'</div>'+
       '<div class="flow-ev">'+circle("Auto",this.fmt(ev),"mdi:car","#24a85a",e.power,soc===null?"":Math.round(soc)+" %")+'</div>'+
-      '<div class="flow-gridwp">'+circle("Netz WP",this.fmt(hp),"mdi:transmission-tower","#399ef2",wp.power)+'</div>'+
+      '<div class="flow-gridwp">'+circle("Netzenergie Wärmepumpe",this.fmt(hp),"mdi:transmission-tower","#399ef2",wp.power)+'</div>'+
       '<div class="flow-wp">'+circle("Wärmepumpe",this.fmt(hp),"mdi:heat-pump","#b184e5",wp.power)+'</div></div>'+
       '<div class="meters"><section class="panel"><h3>'+ico('mdi:home-lightning-bolt','#e9a219')+' Hausstrom</h3>'+
       '<div class="metric"><span>Aktuelle Leistung<strong>'+this.fmt(hv)+'</strong></span><span>Zählerstand<strong>'+this.fmtKwh(houseTotal)+'</strong></span></div>'+
@@ -72,7 +72,7 @@ class EnergyFlowCustomCard extends HTMLElement {
     ha-card{background:var(--ha-card-background,rgba(36,39,58,.72));border:1px solid rgba(202,211,245,.12);border-radius:22px;padding:16px;color:var(--primary-text-color,#fff);box-shadow:none;overflow:hidden;font-family:var(--primary-font-family,Roboto,"Arial",sans-serif)}
     .head{display:flex;justify-content:space-between;align-items:center;font-size:19px;font-weight:600;margin-bottom:15px}
     .head>span,h3{display:flex;align-items:center;gap:8px}.head small{font-size:12px;color:#31c47a;font-weight:500}
-    .flow-layout{height:335px;position:relative;isolation:isolate;margin:0 0 20px}
+    .flow-layout{height:385px;position:relative;isolation:isolate;margin:0 0 20px}
     .flow-wires{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
     .wire{fill:none;stroke-width:2.6;stroke-linecap:round;opacity:.85}
     .solar-to-grid,.wp-wire{stroke:#a66add}.solar-to-home{stroke:#e9a219}.grid-to-home{stroke:#329af0}.ev-line{stroke:#269d54}
@@ -80,10 +80,10 @@ class EnergyFlowCustomCard extends HTMLElement {
     .flow-node{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;text-align:center}
     .flow-circle{width:78px;height:78px;border:2px solid var(--node-color);border-radius:50%;background:var(--card-background-color,#222530);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;line-height:1.12}
     .flow-circle strong{font-size:14px;white-space:nowrap;font-weight:600}.node-extra{font-size:11px;color:#c8ccd9}
-    .flow-label{font-size:13px;line-height:1.25;white-space:nowrap;font-weight:400;order:2}.flow-pv .flow-label,.flow-ev .flow-label{order:-1;margin-bottom:3px}
+    .flow-label{font-size:13px;line-height:1.25;white-space:normal;max-width:124px;font-weight:400;order:2}.flow-pv .flow-label,.flow-ev .flow-label{order:-1;margin-bottom:3px}
     .flow-pv,.flow-grid,.flow-home,.flow-ev,.flow-gridwp,.flow-wp{position:absolute;transform:translateX(-50%);z-index:1}
     .flow-pv{left:50%;top:7px}.flow-grid{left:13.5%;top:145px}.flow-home{left:86.5%;top:145px}
-    .flow-ev{left:86.5%;top:5px}.flow-gridwp{left:13.5%;top:245px}.flow-wp{left:48.5%;top:245px}
+    .flow-ev{left:86.5%;top:5px}.flow-gridwp{left:13.5%;top:290px}.flow-wp{left:48.5%;top:290px}
     .meters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
     .panel{border:1px solid rgba(202,211,245,.12);border-radius:17px;padding:12px;background:rgba(15,20,35,.16);min-width:0}
     h3{font-size:15px;line-height:1.35;font-weight:600;margin:0 0 5px;overflow-wrap:normal}
@@ -106,7 +106,7 @@ class EnergyFlowCustomCard extends HTMLElement {
     .gauge-track{stroke:#353d4d}.gauge-fill{stroke-dashoffset:0}
     .gauge strong{font-size:17px;position:relative;margin-top:-24px;z-index:1}
     .gauge span{font-size:11px;color:var(--secondary-text-color,#abb2c0);margin-top:6px;line-height:1.3;overflow-wrap:anywhere}
-    @media(max-width:460px){ha-card{padding:11px}.flow-circle{width:69px;height:69px}.flow-circle strong{font-size:12px}.flow-label{font-size:12px}.meters{grid-template-columns:1fr}.panel{padding:13px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:15px}.flow-gridwp,.flow-wp{top:236px}}
+    @media(max-width:460px){ha-card{padding:11px}.flow-circle{width:69px;height:69px}.flow-circle strong{font-size:12px}.flow-label{font-size:12px}.meters{grid-template-columns:1fr}.panel{padding:13px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:15px}.flow-gridwp,.flow-wp{top:290px}}
     @media(prefers-reduced-motion:reduce){.dot{display:none}}
   `;}
 }
