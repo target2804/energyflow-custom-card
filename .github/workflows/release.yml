@@ -1,0 +1,34 @@
+name: Release
+
+# Legt bei jedem Push auf main automatisch ein GitHub-Release an, wenn die
+# Versionsnummer in der ersten Zeile von energyflow-custom-card.js ("v0.5.2")
+# noch kein Release hat. HACS zeigt dann "v0.5.2" statt eines Commit-Hashes.
+
+on:
+  push:
+    branches: [main]
+    paths: ["energyflow-custom-card.js"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read version
+        id: v
+        run: |
+          VERSION=$(head -1 energyflow-custom-card.js | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          [ -n "$VERSION" ] || { echo "No version found in first line"; exit 1; }
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Create release if missing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="${{ steps.v.outputs.version }}"
+          if gh release view "$V" >/dev/null 2>&1; then
+            echo "Release $V exists"; exit 0
+          fi
+          gh release create "$V" energyflow-custom-card.js --target "${{ github.sha }}" --title "$V" --generate-notes
