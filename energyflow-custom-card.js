@@ -1,4 +1,4 @@
-/* EnergyFlow Custom Card — v0.6.1
+/* EnergyFlow Custom Card — v0.7.0
  * Modular energy flow card: any number of electrically separate circuits
  * (each with its own grid meter, optional PV, a "home" node and an optional device),
  * plus freely configurable detail panels. Visual editor included.
@@ -11,12 +11,23 @@
  * (e.g. "layout", "preview", "hass"), they would be shadowed.
  */
 
-const EF_VERSION = "0.6.1";
+const EF_VERSION = "0.7.0";
 const EF_TYPE = "custom:energyflow-custom-card";
 const EF_EXPORT_COLOR = "#a66add";
 const EF_PALETTE = {orange:"#e9a219",yellow:"#f0ba27",blue:"#329af0",violet:"#b184e5",green:"#24a85a",teal:"#23a9aa",red:"#e0556b",grey:"#8b92a5"};
-const EF_COLOR_OPTIONS = [["orange","Orange"],["yellow","Gelb"],["blue","Blau"],["violet","Violett"],["green","Grün"],["teal","Türkis"],["red","Rot"],["grey","Grau"]].map(([value,label])=>({value,label}));
-const efColor = (v, d) => EF_PALETTE[v] || (/^#[0-9a-f]{3,8}$/i.test(String(v || "")) ? v : (EF_PALETTE[d] || d));
+const efColor = (v, d) => {
+  if (Array.isArray(v) && v.length >= 3 && v.slice(0, 3).every(n => Number.isFinite(Number(n)))) return "rgb(" + v.slice(0, 3).map(n => Math.max(0, Math.min(255, Math.round(Number(n))))).join(",") + ")";
+  return EF_PALETTE[v] || (/^#[0-9a-f]{3,8}$/i.test(String(v || "")) ? v : (EF_PALETTE[d] || d));
+};
+/* any colour value (palette name, hex or [r,g,b]) -> [r,g,b] for the editor's colour picker */
+const efToRgb = (v, d) => {
+  if (Array.isArray(v) && v.length >= 3) return v.slice(0, 3).map(Number);
+  let hex = EF_PALETTE[v] || (/^#[0-9a-f]{3,6}$/i.test(String(v || "")) ? v : (EF_PALETTE[d] || d));
+  hex = String(hex).replace("#", "");
+  if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+  const m = /^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(hex);
+  return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : [128, 128, 128];
+};
 
 /* ---------- Config helpers (shared by card and editor) ---------- */
 
@@ -373,9 +384,9 @@ class EnergyFlowCustomCard extends HTMLElement {
     .gauge span{font-size:12px;color:var(--secondary-text-color,#abb2c0);margin-top:8px;line-height:1.3;overflow-wrap:normal;hyphens:auto}
     .wp-detail{display:flex;align-items:center;gap:8px;padding:11px 0;border-top:1px solid rgba(202,211,245,.08);min-width:0}
     .wp-detail ha-icon{flex-shrink:0;--mdc-icon-size:21px!important}
-    .wp-detail-main{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;font-size:13px}
+    .wp-detail-main{display:flex;flex-direction:column;gap:3px;flex:1 0 auto;font-size:13px}
     .wp-detail-main span{color:var(--secondary-text-color,#abb2c0);font-size:12px}
-    .wp-detail-values{display:flex;flex-direction:column;text-align:right;gap:3px;margin-left:auto;max-width:58%}
+    .wp-detail-values{display:flex;flex-direction:column;text-align:right;gap:3px;margin-left:auto;min-width:0;flex:0 1 auto}
     .wp-detail-values strong{font-size:13px}.wp-detail-values span{font-size:11px;color:var(--secondary-text-color,#abb2c0)}
     @media(max-width:460px){ha-card{padding:11px}.panel{padding:13px}}
     @media(prefers-reduced-motion:reduce){.flow-wires circle{display:none}}
@@ -383,32 +394,51 @@ class EnergyFlowCustomCard extends HTMLElement {
 }
 
 /* ====================================================================== */
-/*  Visual editor                                                         */
+/*  Visual editor — same navigation pattern as Power Flow Card Plus:      */
+/*  overview with link rows -> sub pages (back arrow) with ha-form.       */
 /* ====================================================================== */
+
+const EF_ICONS = {
+  back: "M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z",
+  chevron: "M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z",
+  close: "M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z",
+  pencil: "M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z",
+  up: "M13,20H11V8L5.5,13.5L4.08,12.08L12,4.16L19.92,12.08L18.5,13.5L13,8V20Z",
+  down: "M11,4H13V16L18.5,10.5L19.92,11.92L12,19.84L4.08,11.92L5.5,10.5L11,16V4Z",
+  plus: "M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"
+};
 
 const EF_LABELS = {
   name: "Name (Beschriftung)", icon: "Icon", color: "Farbe", entity: "Sensor (Leistung)", meter_reading: "Zählerstand (kWh-Sensor)",
-  invert: "Vorzeichen umkehren (Einspeisung positiv)", enabled: "Anzeigen", soc: "Ladestand (%-Sensor)",
-  title: "Titel", hint: "Zusatztext (rechts)", type: "Panel-Typ", circuit: "Stromkreis", show_meter: "Leistung & Zählerstand anzeigen", show_bar: "Verteilungsbalken anzeigen",
+  invert: "Vorzeichen umkehren", enabled: "Anzeigen", soc: "Ladestand (%-Sensor)",
+  title: "Titel", hint: "Zusatztext (rechts)", type: "Typ", circuit: "Stromkreis", show_meter: "Leistung & Zählerstand", show_bar: "Verteilungsbalken",
   source: "Wert", status_entity: "Status-Sensor", energy_entity: "Energie gesamt (kWh-Sensor)", in_bar: "Im Verteilungsbalken",
   show_pv: "PV-Produktion", show_feed_in: "PV-Einspeisung", show_own: "Eigenverbrauchsquote", show_autarky: "Autarkiegrad"
 };
 const EF_ENTITY_HELPER = "Optional: leer lassen, wenn der Wert nicht angezeigt oder berechnet werden soll.";
 const EF_HELPERS = {
-  invert: "Home Assistant: positiv = Bezug, negativ = Einspeisung.",
+  invert: "Home Assistant: positiv = Bezug, negativ = Einspeisung. Hier umkehren, falls dein Sensor andersherum zählt.",
   source: "Eigener Sensor, Haus-Gesamt, Gerät oder Rest (Haus minus Gerät)."
+};
+const EF_NODES = {
+  grid: {label: "Netz", icon: "mdi:transmission-tower", color: "blue"},
+  solar: {label: "PV-Anlage", icon: "mdi:solar-power", color: "orange"},
+  home: {label: "Haus / Verbraucher", icon: "mdi:home", color: "orange"},
+  device: {label: "Gerät (z. B. Auto/Wallbox)", icon: "mdi:car", color: "green"}
 };
 
 class EnergyFlowCustomCardEditor extends HTMLElement {
-  constructor() { super(); this._forms = []; this._open = {}; this.attachShadow({mode: "open"}); }
+  constructor() { super(); this._forms = []; this._path = []; this.attachShadow({mode: "open"}); }
   connectedCallback() { this._loadHelpers(); }
   async _loadHelpers() {
     try {
+      if (!customElements.get("ha-form")) customElements.get("hui-button-card")?.getConfigElement?.();
+      if (!customElements.get("ha-entity-picker")) customElements.get("hui-entities-card")?.getConfigElement?.();
       if (customElements.get("ha-form") && customElements.get("ha-entity-picker")) return;
       const h = await window.loadCardHelpers?.();
       const c = await h?.createCardElement({type: "entities", entities: []});
       await c?.constructor?.getConfigElement?.();
-    } catch (e) { /* editor still works if pickers are already loaded */ }
+    } catch (e) { /* editor still works if the pickers are already loaded */ }
   }
   setConfig(config) {
     const n = efNormalize(config);
@@ -416,7 +446,7 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
     this._cfg = n;
     this._build();
   }
-  set hass(h) { this._hass = h; this._forms.forEach(f => { f.hass = h; }); }
+  set hass(h) { this._hass = h; this._forms.forEach(f => { f.hass = h; }); this.shadowRoot.querySelectorAll("ha-entity-picker").forEach(p => { p.hass = h; }); }
 
   _pruned() {
     const c = JSON.parse(JSON.stringify(this._cfg));
@@ -429,8 +459,41 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
     this.dispatchEvent(new CustomEvent("config-changed", {bubbles: true, composed: true, detail: {config: c}}));
   }
   _structural() { this._emit(); this._build(); }
+  _go(path) { this._path = path; this._build(); }
+  _back() { this._go(this._path[2] === "r" ? this._path.slice(0, 2) : this._path.slice(0, -1)); }
 
-  /* A ha-form bound to a plain object; writes changes back, drops empty values */
+  /* ---------- small DOM helpers ---------- */
+  _el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+  _iconBtn(path, label, fn, cls) {
+    const b = document.createElement("ha-icon-button");
+    b.path = path; b.label = label; if (cls) b.className = cls;
+    b.addEventListener("click", ev => { ev.preventDefault(); ev.stopPropagation(); fn(); });
+    return b;
+  }
+  _btn(label, fn, cls) { const b = this._el("button", "pill " + (cls || ""), label); b.type = "button"; b.addEventListener("click", ev => { ev.preventDefault(); fn(); }); return b; }
+  _header(wrap, title, actions = []) {
+    const h = this._el("div", "header");
+    const l = this._el("div", "back-title");
+    l.appendChild(this._iconBtn(EF_ICONS.back, "Zurück", () => this._back()));
+    l.appendChild(this._el("span", "", title));
+    h.appendChild(l);
+    const a = this._el("div", "acts"); actions.forEach(x => a.appendChild(x)); h.appendChild(a);
+    wrap.appendChild(h);
+  }
+  _link(wrap, icon, title, secondary, fn) {
+    const r = this._el("div", "link"); r.setAttribute("role", "button"); r.tabIndex = 0;
+    const ic = document.createElement("ha-icon"); ic.setAttribute("icon", icon); ic.className = "lead"; r.appendChild(ic);
+    const t = this._el("div", "ltext"); t.appendChild(this._el("div", "", title));
+    if (secondary) t.appendChild(this._el("div", "secondary", secondary));
+    r.appendChild(t);
+    const ch = document.createElement("ha-svg-icon"); ch.path = EF_ICONS.chevron; ch.className = "lead"; r.appendChild(ch);
+    r.addEventListener("click", fn); r.addEventListener("keydown", e => { if (e.key === "Enter") fn(); });
+    wrap.appendChild(r);
+  }
+  _title(wrap, text) { wrap.appendChild(this._el("div", "section-title", text)); }
+  _move(arr, i, dir, after) { const j = i + dir; if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; if (after) after(i, j); this._structural(); }
+
+  /* ha-form bound to a plain object; writes back only what this form changed */
   _form(schema, obj, {onChange, map, unmap, entityHelper} = {}) {
     const f = document.createElement("ha-form");
     f.hass = this._hass; f.schema = schema;
@@ -441,7 +504,7 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
       ev.stopPropagation();
       const v = unmap ? unmap(ev.detail.value) : ev.detail.value;
       const pv = unmap ? unmap(f.data) : f.data;
-      Object.keys(v).forEach(k => {   // apply only what this form changed (several forms may share one object)
+      Object.keys(v).forEach(k => {
         if (JSON.stringify(v[k]) === JSON.stringify(pv[k])) return;
         if (v[k] === undefined || v[k] === "" || v[k] === null) delete obj[k]; else obj[k] = v[k];
       });
@@ -454,111 +517,62 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
     return f;
   }
 
-  _el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
-  _btn(label, fn, cls) { const b = this._el("button", "btn " + (cls || ""), label); b.type = "button"; b.addEventListener("click", ev => { ev.preventDefault(); ev.stopPropagation(); fn(); }); return b; }
-  _section(key, title, {open = false, actions = []} = {}) {
-    const d = document.createElement("details");
-    d.open = this._open[key] !== undefined ? this._open[key] : open;
-    d.addEventListener("toggle", () => { this._open[key] = d.open; });
-    const s = this._el("summary"); s.appendChild(this._el("span", "st", title));
-    const a = this._el("span", "acts"); actions.forEach(x => a.appendChild(x)); s.appendChild(a);
-    d.appendChild(s);
-    const body = this._el("div", "body"); d.appendChild(body);
-    d.body = body;
-    return d;
-  }
-  _move(arr, i, dir) { const j = i + dir; if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; this._structural(); }
-
-  /* ---- schemas ---- */
+  /* ---------- schemas ---------- */
   _S() {
-    const ent = {entity: {}};
     const two = (a, b) => ({type: "grid", name: "", schema: [a, b]});
-    const icon = {name: "icon", selector: {icon: {}}}, name = {name: "name", selector: {text: {}}};
-    const color = {name: "color", selector: {select: {options: EF_COLOR_OPTIONS, mode: "dropdown"}}};
+    const text = n => ({name: n, selector: {text: {}}}), icon = {name: "icon", selector: {icon: {}}};
+    const color = {name: "color", selector: {color_rgb: {}}};
+    const ent = n => ({name: n, selector: {entity: {}}}), bool = n => ({name: n, selector: {boolean: {}}});
     return {
-      circuit: [{name: "name", selector: {text: {}}}],
-      grid: [{name: "entity", selector: ent}, two(name, icon), two(color, {name: "meter_reading", selector: ent}), {name: "invert", selector: {boolean: {}}}],
-      solar: [{name: "enabled", selector: {boolean: {}}}, {name: "entity", selector: ent}, two(name, icon), color],
-      home: [{name: "entity", selector: ent}, two(name, icon), color],
-      device: [{name: "enabled", selector: {boolean: {}}}, {name: "entity", selector: ent}, two(name, icon), two(color, {name: "soc", selector: ent})]
+      circuit: [text("name")],
+      grid: [ent("entity"), two(text("name"), icon), two(color, ent("meter_reading")), bool("invert")],
+      solar: [bool("enabled"), ent("entity"), two(text("name"), icon), color],
+      home: [ent("entity"), two(text("name"), icon), color],
+      device: [bool("enabled"), ent("entity"), two(text("name"), icon), two(color, ent("soc"))],
+      panelCommon: circuitOptions => [
+        {name: "type", selector: {select: {mode: "dropdown", options: [{value: "circuit", label: "Stromkreis-Bereich (Zeilen)"}, {value: "balance", label: "PV & Bilanz"}]}}},
+        {name: "circuit", selector: {select: {mode: "dropdown", options: circuitOptions.length ? circuitOptions : [{value: "0", label: "–"}]}}},
+        two(text("title"), icon), two(color, text("hint"))
+      ],
+      panelCircuit: [two(bool("show_meter"), bool("show_bar"))],
+      panelBalance: [two(bool("show_pv"), bool("show_feed_in")), two(bool("show_own"), bool("show_autarky"))],
+      row: [
+        {name: "source", selector: {select: {mode: "dropdown", options: [{value: "entity", label: "Eigener Sensor"}, {value: "home", label: "Haus-Gesamt des Stromkreises"}, {value: "device", label: "Gerät des Stromkreises"}, {value: "remainder", label: "Rest (Haus minus Gerät)"}]}}},
+        ent("entity"), two(text("name"), icon), two(color, bool("in_bar")), ent("status_entity"), ent("energy_entity")
+      ]
     };
   }
 
   _build() {
     this._forms = [];
-    const root = this.shadowRoot, cfg = this._cfg, S = this._S();
+    const root = this.shadowRoot, cfg = this._cfg;
     root.innerHTML = "<style>" + this._css() + "</style>";
     const wrap = this._el("div", "wrap"); root.appendChild(wrap);
+    const [a, i, b, j] = this._path;
+    const bad = () => { this._path = []; this._build(); };
+    if (!a) return this._pageMain(wrap);
+    if (a === "c") { const c = cfg.circuits[i]; if (!c) return bad(); return b ? this._pageNode(wrap, c, i, b) : this._pageCircuit(wrap, c, i); }
+    if (a === "p") {
+      const p = cfg.panels[i]; if (!p) return bad();
+      if (b === "r") { if (!p.rows || !p.rows[j]) return bad(); return this._pageRow(wrap, p, i, j); }
+      return this._pagePanel(wrap, p, i);
+    }
+    return bad();
+  }
 
-    /* ---- Circuits ---- */
-    wrap.appendChild(this._el("h3", "", "Stromkreise"));
-    wrap.appendChild(this._el("p", "hint", "Jeder Stromkreis hat einen eigenen Netzanschluss (Zähler). Ein Stromkreis mit PV zeigt das Dreieck PV – Netz – Haus, ohne PV eine einfache Reihe Netz – Haus."));
+  _pageMain(wrap) {
+    const cfg = this._cfg;
+    this._title(wrap, "Stromkreise");
     cfg.circuits.forEach((c, i) => {
-      c.grid = c.grid || {}; c.solar = c.solar || {}; c.home = c.home || {}; c.device = c.device || {};
-      const sec = this._section("c" + i, (i + 1) + ". " + (c.name || "Stromkreis"), {open: cfg.circuits.length === 1, actions: [
-        this._btn("↑", () => this._move(cfg.circuits, i, -1)), this._btn("↓", () => this._move(cfg.circuits, i, 1)),
-        this._btn("✕", () => { cfg.circuits.splice(i, 1); (cfg.panels || []).forEach(p => { if (Number(p.circuit) === i) p.circuit = 0; else if (Number(p.circuit) > i) p.circuit = Number(p.circuit) - 1; }); this._structural(); }, "danger")]});
-      sec.body.appendChild(this._form(S.circuit, c, {onChange: () => { sec.querySelector(".st").textContent = (i + 1) + ". " + (c.name || "Stromkreis"); }}));
-      const sub = (key, title, schema, obj, open, defs, entityHelper) => { const s2 = this._section("c" + i + key, title, {open}); s2.classList.add("sub"); s2.body.appendChild(this._form(schema, obj, {map: o => ({...defs, ...o}), entityHelper})); sec.body.appendChild(s2); };
-      sub("g", "Netz", S.grid, c.grid, true, {icon: "mdi:transmission-tower", color: "blue"}, false);
-      sub("s", "PV-Anlage (optional)", S.solar, c.solar, !!(c.solar.enabled || c.solar.entity), {icon: "mdi:solar-power", color: "orange"}, false);
-      sub("h", "Haus / Verbraucher", S.home, c.home, true, {icon: "mdi:home", color: "orange"}, true);
-      sub("d", "Gerät, z. B. Auto/Wallbox (optional)", S.device, c.device, !!(c.device.enabled || c.device.entity), {icon: "mdi:car", color: "green"}, false);
-      wrap.appendChild(sec);
+      const parts = ["Netz"]; if (this._on(c.solar)) parts.push("PV"); parts.push("Haus"); if (this._on(c.device)) parts.push("Gerät");
+      this._link(wrap, (c.home && c.home.icon) || "mdi:home-lightning-bolt", (i + 1) + ". " + (c.name || "Stromkreis"), parts.join(" · "), () => this._go(["c", i]));
     });
     wrap.appendChild(this._btn("+ Stromkreis hinzufügen", () => { cfg.circuits.push({name: "Stromkreis " + (cfg.circuits.length + 1), grid: {name: "Netz"}, home: {name: "Haus"}}); this._structural(); }, "add"));
-
-    /* ---- Panels ---- */
-    wrap.appendChild(this._el("h3", "", "Bereiche unter dem Diagramm"));
-    wrap.appendChild(this._el("p", "hint", "Frei wählbar: Stromkreis-Bereiche mit beliebigen Zeilen (Leistung, Status, Energie) und Bilanz-Bereiche mit PV-Kennzahlen."));
-    const circuitOptions = cfg.circuits.map((c, i) => ({value: String(i), label: (i + 1) + ". " + (c.name || "Stromkreis")}));
+    this._title(wrap, "Bereiche unter dem Diagramm");
     cfg.panels.forEach((p, i) => {
-      const label = (p.type === "balance" ? "Bilanz" : "Stromkreis") + ": " + (p.title || "ohne Titel");
-      const sec = this._section("p" + i, (i + 1) + ". " + label, {actions: [
-        this._btn("↑", () => this._move(cfg.panels, i, -1)), this._btn("↓", () => this._move(cfg.panels, i, 1)),
-        this._btn("✕", () => { cfg.panels.splice(i, 1); this._structural(); }, "danger")]});
-      const common = [
-        {name: "type", selector: {select: {mode: "dropdown", options: [{value: "circuit", label: "Stromkreis-Bereich (Zeilen)"}, {value: "balance", label: "PV & Bilanz"}]}}},
-        {name: "circuit", selector: {select: {mode: "dropdown", options: circuitOptions.length ? circuitOptions : [{value: "0", label: "–"}]}}},
-        {type: "grid", name: "", schema: [{name: "title", selector: {text: {}}}, {name: "icon", selector: {icon: {}}}]},
-        {type: "grid", name: "", schema: [{name: "color", selector: {select: {options: EF_COLOR_OPTIONS, mode: "dropdown"}}}, {name: "hint", selector: {text: {}}}]}
-      ];
-      const map = o => ({...o, type: o.type || "circuit", circuit: String(o.circuit || 0)});
-      const unmap = v => ({...v, circuit: Number(v.circuit || 0)});
-      const prevType = p.type || "circuit";
-      sec.body.appendChild(this._form(common, p, {map, unmap, onChange: o => {
-        sec.querySelector(".st").textContent = (i + 1) + ". " + ((o.type === "balance" ? "Bilanz" : "Stromkreis") + ": " + (o.title || "ohne Titel"));
-        if ((o.type || "circuit") !== prevType) this._structural();
-      }}));
-      if (prevType === "balance") {
-        sec.body.appendChild(this._form([{type: "grid", name: "", schema: [{name: "show_pv", selector: {boolean: {}}}, {name: "show_feed_in", selector: {boolean: {}}}, {name: "show_own", selector: {boolean: {}}}, {name: "show_autarky", selector: {boolean: {}}}]}], p,
-          {map: o => ({show_pv: o.show_pv !== false, show_feed_in: o.show_feed_in !== false, show_own: o.show_own !== false, show_autarky: o.show_autarky !== false, ...o}),
-           unmap: v => v}));
-      } else {
-        sec.body.appendChild(this._form([{type: "grid", name: "", schema: [{name: "show_meter", selector: {boolean: {}}}, {name: "show_bar", selector: {boolean: {}}}]}], p,
-          {map: o => ({show_meter: o.show_meter !== false, show_bar: o.show_bar !== false, ...o}), unmap: v => v}));
-        p.rows = Array.isArray(p.rows) ? p.rows : [];
-        sec.body.appendChild(this._el("h4", "", "Zeilen"));
-        p.rows.forEach((r, j) => {
-          const rs = this._section("p" + i + "r" + j, (j + 1) + ". " + (r.name || r.entity || "Zeile"), {actions: [
-            this._btn("↑", () => this._move(p.rows, j, -1)), this._btn("↓", () => this._move(p.rows, j, 1)),
-            this._btn("✕", () => { p.rows.splice(j, 1); this._structural(); }, "danger")]});
-          rs.classList.add("sub");
-          const rowSchema = [
-            {name: "source", selector: {select: {mode: "dropdown", options: [{value: "entity", label: "Eigener Sensor"}, {value: "home", label: "Haus-Gesamt des Stromkreises"}, {value: "device", label: "Gerät des Stromkreises"}, {value: "remainder", label: "Rest (Haus minus Gerät)"}]}}},
-            {name: "entity", selector: {entity: {}}},
-            {type: "grid", name: "", schema: [{name: "name", selector: {text: {}}}, {name: "icon", selector: {icon: {}}}]},
-            {type: "grid", name: "", schema: [{name: "color", selector: {select: {options: EF_COLOR_OPTIONS, mode: "dropdown"}}}, {name: "in_bar", selector: {boolean: {}}}]},
-            {name: "status_entity", selector: {entity: {}}},
-            {name: "energy_entity", selector: {entity: {}}}
-          ];
-          rs.body.appendChild(this._form(rowSchema, r, {entityHelper: true, map: o => ({source: "entity", ...o, in_bar: o.in_bar !== undefined ? o.in_bar : (o.source === "remainder" || o.source === "device")}),
-            onChange: o => { rs.querySelector(".st").textContent = (j + 1) + ". " + (o.name || o.entity || "Zeile"); }}));
-          sec.body.appendChild(rs);
-        });
-        sec.body.appendChild(this._btn("+ Zeile hinzufügen", () => { p.rows.push({source: "entity", name: "Neue Zeile"}); this._structural(); }, "add"));
-      }
-      wrap.appendChild(sec);
+      const cn = (cfg.circuits[Number(p.circuit) || 0] || {}).name || "";
+      this._link(wrap, p.icon || (p.type === "balance" ? "mdi:solar-power" : "mdi:flash"), (i + 1) + ". " + (p.title || "ohne Titel"),
+        (p.type === "balance" ? "PV & Bilanz" : "Stromkreis-Bereich") + (cn ? " · " + cn : ""), () => this._go(["p", i]));
     });
     const adds = this._el("div", "adds");
     adds.appendChild(this._btn("+ Stromkreis-Bereich", () => { cfg.panels.push({type: "circuit", circuit: 0, title: "Neuer Bereich", icon: "mdi:flash", color: "orange", rows: []}); this._structural(); }, "add"));
@@ -566,23 +580,128 @@ class EnergyFlowCustomCardEditor extends HTMLElement {
     wrap.appendChild(adds);
   }
 
+  _on(node) { return !!node && (node.enabled !== undefined ? !!node.enabled : !!node.entity); }
+
+  _pageCircuit(wrap, c, i) {
+    const cfg = this._cfg;
+    this._header(wrap, c.name || "Stromkreis", [
+      this._iconBtn(EF_ICONS.up, "Nach oben", () => this._move(cfg.circuits, i, -1, (x, y) => { this._path = ["c", y]; this._swapPanelCircuits(x, y); })),
+      this._iconBtn(EF_ICONS.down, "Nach unten", () => this._move(cfg.circuits, i, 1, (x, y) => { this._path = ["c", y]; this._swapPanelCircuits(x, y); })),
+      this._iconBtn(EF_ICONS.close, "Stromkreis löschen", () => {
+        cfg.circuits.splice(i, 1);
+        cfg.panels.forEach(p => { const n = Number(p.circuit) || 0; if (n === i) p.circuit = 0; else if (n > i) p.circuit = n - 1; });
+        this._path = []; this._structural();
+      })
+    ]);
+    wrap.appendChild(this._form(this._S().circuit, c));
+    ["grid", "solar", "home", "device"].forEach(k => {
+      const nd = c[k] || {}, def = EF_NODES[k];
+      const sec = k === "solar" || k === "device" ? (this._on(nd) ? (nd.entity || "aktiv") : "nicht aktiv") : (nd.entity || "");
+      this._link(wrap, nd.icon || def.icon, def.label, sec, () => this._go(["c", i, k]));
+    });
+  }
+  _swapPanelCircuits(x, y) { this._cfg.panels.forEach(p => { const n = Number(p.circuit) || 0; if (n === x) p.circuit = y; else if (n === y) p.circuit = x; }); }
+
+  _pageNode(wrap, c, i, kind) {
+    const def = EF_NODES[kind];
+    c[kind] = c[kind] || {};
+    this._header(wrap, (c.name || "Stromkreis") + " › " + def.label);
+    wrap.appendChild(this._form(this._S()[kind], c[kind], {entityHelper: kind === "home" || kind === "device",
+      map: o => ({icon: def.icon, ...o, color: efToRgb(o.color, def.color)})}));
+  }
+
+  _pagePanel(wrap, p, i) {
+    const cfg = this._cfg;
+    const circuitOptions = cfg.circuits.map((c, k) => ({value: String(k), label: (k + 1) + ". " + (c.name || "Stromkreis")}));
+    this._header(wrap, p.title || "Bereich", [
+      this._iconBtn(EF_ICONS.up, "Nach oben", () => this._move(cfg.panels, i, -1, (x, y) => { this._path = ["p", y]; })),
+      this._iconBtn(EF_ICONS.down, "Nach unten", () => this._move(cfg.panels, i, 1, (x, y) => { this._path = ["p", y]; })),
+      this._iconBtn(EF_ICONS.close, "Bereich löschen", () => { cfg.panels.splice(i, 1); this._path = []; this._structural(); })
+    ]);
+    const prevType = p.type || "circuit";
+    wrap.appendChild(this._form(this._S().panelCommon(circuitOptions), p, {
+      map: o => ({...o, type: o.type || "circuit", circuit: String(o.circuit || 0), icon: o.icon || (prevType === "balance" ? "mdi:solar-power" : "mdi:flash"), color: efToRgb(o.color, "orange")}),
+      unmap: v => ({...v, circuit: Number(v.circuit || 0)}),
+      onChange: o => { if ((o.type || "circuit") !== prevType) this._structural(); }
+    }));
+    if (prevType === "balance") {
+      wrap.appendChild(this._form(this._S().panelBalance, p, {map: o => ({show_pv: true, show_feed_in: true, show_own: true, show_autarky: true, ...o})}));
+      return;
+    }
+    wrap.appendChild(this._form(this._S().panelCircuit, p, {map: o => ({show_meter: true, show_bar: true, ...o})}));
+    this._title(wrap, "Zeilen");
+    p.rows = Array.isArray(p.rows) ? p.rows : [];
+    this._rowList(wrap, p, i);
+  }
+
+  /* row list in the style of Power Flow Card Plus' individual devices: entity picker per row + edit/remove */
+  _rowList(wrap, p, i) {
+    const list = this._el("div", "entities");
+    p.rows.forEach((r, j) => {
+      const row = this._el("div", "entity");
+      const src = r.source || "entity";
+      if (src === "entity") {
+        const pick = document.createElement("ha-entity-picker");
+        pick.hass = this._hass; pick.value = r.entity || ""; pick.setAttribute("allow-custom-entity", ""); pick.hideClearIcon = true;
+        pick.addEventListener("value-changed", ev => { ev.stopPropagation(); const v = ev.detail.value; if (v) r.entity = v; else delete r.entity; this._emit(); });
+        row.appendChild(pick);
+      } else {
+        const label = {home: "Haus-Gesamt", device: "Gerät", remainder: "Rest (Haus minus Gerät)"}[src] || src;
+        const sp = this._el("div", "special-row"); sp.appendChild(this._el("span", "", r.name || label)); sp.appendChild(this._el("span", "secondary", label));
+        row.appendChild(sp);
+      }
+      row.appendChild(this._iconBtn(EF_ICONS.up, "Nach oben", () => this._move(p.rows, j, -1), "small"));
+      row.appendChild(this._iconBtn(EF_ICONS.down, "Nach unten", () => this._move(p.rows, j, 1), "small"));
+      row.appendChild(this._iconBtn(EF_ICONS.close, "Entfernen", () => { p.rows.splice(j, 1); this._structural(); }, "small"));
+      row.appendChild(this._iconBtn(EF_ICONS.pencil, "Bearbeiten", () => this._go(["p", i, "r", j]), "small"));
+      list.appendChild(row);
+    });
+    wrap.appendChild(list);
+    const add = document.createElement("ha-entity-picker");
+    add.className = "add-entity"; add.hass = this._hass;
+    add.addEventListener("value-changed", ev => {
+      ev.stopPropagation();
+      const v = ev.detail.value; if (!v) return;
+      ev.target.value = "";
+      p.rows.push({source: "entity", entity: v}); this._structural();
+    });
+    wrap.appendChild(add);
+    const adds = this._el("div", "adds");
+    [["+ Haus-Gesamt", "home"], ["+ Gerät", "device"], ["+ Rest", "remainder"]].forEach(([label, source]) =>
+      adds.appendChild(this._btn(label, () => { p.rows.push({source}); this._structural(); }, "add")));
+    wrap.appendChild(adds);
+  }
+
+  _pageRow(wrap, p, i, j) {
+    const r = p.rows[j];
+    this._header(wrap, (j + 1) + " / " + p.rows.length + " Zeile", []);
+    wrap.appendChild(this._form(this._S().row, r, {entityHelper: true,
+      map: o => ({source: "entity", ...o, color: efToRgb(o.color, "violet"), in_bar: o.in_bar !== undefined ? o.in_bar : (o.source === "remainder" || o.source === "device")}),
+      onChange: () => {}
+    }));
+  }
+
   _css() { return `
-    :host{display:block}.wrap{display:flex;flex-direction:column;gap:10px}
-    h3{margin:14px 0 0;font-size:16px;font-weight:600}h4{margin:12px 0 4px;font-size:14px;font-weight:500}
-    .hint{margin:0 0 4px;font-size:12px;color:var(--secondary-text-color)}
-    details{border:1px solid var(--divider-color,rgba(127,127,127,.3));border-radius:10px;background:var(--card-background-color)}
-    details.sub{margin-top:8px;border-style:dashed}
-    summary{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;cursor:pointer;list-style:none;font-weight:500}
-    summary::-webkit-details-marker{display:none}
-    summary::before{content:"▸";margin-right:6px;transition:transform .15s}details[open]>summary::before{transform:rotate(90deg)}
-    .st{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .acts{display:flex;gap:4px}
-    .body{padding:4px 12px 12px;display:flex;flex-direction:column;gap:8px}
-    .btn{border:1px solid var(--divider-color,rgba(127,127,127,.4));background:transparent;color:var(--primary-text-color);border-radius:8px;padding:4px 10px;font:inherit;cursor:pointer}
-    .btn:hover{background:rgba(127,127,127,.15)}
-    .btn.danger{color:var(--error-color,#db4437)}
-    .btn.add{align-self:flex-start;padding:8px 14px;color:var(--primary-color)}
+    :host{display:block}.wrap{display:flex;flex-direction:column;gap:12px}
+    ha-form{display:block;width:100%}
+    .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+    .back-title{display:flex;align-items:center;font-size:18px;min-width:0}
+    .back-title span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .acts{display:flex;align-items:center}
+    .section-title{margin-top:8px;font-size:16px;font-weight:600}
+    .link{display:flex;align-items:center;gap:1rem;min-height:48px;padding:6px 8px;cursor:pointer;font-weight:500;border-radius:8px;outline:none}
+    .link:hover,.link:focus-visible{background:rgba(127,127,127,.12)}
+    .lead{color:var(--secondary-text-color)}
+    .ltext{flex:1;min-width:0}.ltext>div:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .secondary{display:block;color:var(--secondary-text-color);font-size:12px;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .pill{border:1px solid var(--divider-color,rgba(127,127,127,.4));background:transparent;color:var(--primary-color);border-radius:99px;padding:6px 14px;font:inherit;cursor:pointer}
+    .pill:hover{background:rgba(127,127,127,.12)}
     .adds{display:flex;gap:8px;flex-wrap:wrap}
+    .entity{display:flex;align-items:center}
+    .entity ha-entity-picker{flex-grow:1;min-width:0}
+    .special-row{height:60px;display:flex;flex-direction:column;justify-content:center;flex-grow:1;font-size:16px}
+    ha-icon-button.small{--mdc-icon-button-size:36px;color:var(--secondary-text-color)}
+    .add-entity{display:block}
   `; }
 }
 

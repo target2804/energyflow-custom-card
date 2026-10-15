@@ -1,6 +1,6 @@
 # EnergyFlow Custom Card
 
-Modulare Energiefluss-Karte für Home Assistant im Stil der Power Flow Card Plus – mit **beliebig vielen elektrisch getrennten Stromkreisen** (jeweils eigener Zähler), optionaler PV, Geräten und frei wählbaren Bereichen unter dem Diagramm. Die Karte hat einen **visuellen Editor**, YAML ist nicht nötig.
+Modulare Energiefluss-Karte für Home Assistant im Stil der Power Flow Card Plus – mit **beliebig vielen elektrisch getrennten Stromkreisen** (jeweils eigener Zähler), optionaler PV, Geräten und frei wählbaren Bereichen unter dem Diagramm. Die Karte hat einen **visuellen Editor** im Stil der Power Flow Card Plus (Übersicht mit Link-Zeilen, Unterseiten mit Zurück-Pfeil, Farbwähler), YAML ist nicht nötig.
 
 ## Installation über HACS
 1. HACS → Benutzerdefinierte Repositories → `https://github.com/target2804/energyflow-custom-card` → Typ **Dashboard**
@@ -83,7 +83,7 @@ panels:
     title: PV & Bilanz
     hint: Hausstromkreis
 ```
-Farben: `orange`, `yellow`, `blue`, `violet`, `green`, `teal`, `red`, `grey` oder ein Hex-Wert (`"#23a9aa"`).
+Farben: Farbwähler im Editor (gespeichert als `[r, g, b]`), in YAML zusätzlich `orange`, `yellow`, `blue`, `violet`, `green`, `teal`, `red`, `grey` oder ein Hex-Wert (`"#23a9aa"`).
 
 ## Hinweise
 - Leistungssensoren akzeptieren `W` und `kW`, Zählerstände `Wh` und `kWh`.
